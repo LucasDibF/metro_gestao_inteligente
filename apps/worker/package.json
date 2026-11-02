@@ -1,0 +1,21 @@
+{
+  "name": "@spt/worker",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx watch --env-file=../../.env src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.3.2",
+    "@nestjs/core": "12.3.2",
+    "@nestjs/platform-express": "12.3.2",
+    "@spt/private-storage": "0.1.0",
+    "@spt/report-templates": "0.0.0",
+    "playwright": "^1.64.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "@spt/map-reference": "0.1.0"
+  }
+}

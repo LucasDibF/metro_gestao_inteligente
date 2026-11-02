@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+}
+model Tenant {
+  notificationReads NotificationRead[]
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  clients Client[]
+  works Work[]
+  sessions AuthSession[]
+  memberships Membership[]
+  @@map("tenants")
+}
+
+enum MembershipRole {
+  ADMIN
+  ENGINEER
+  OPERATOR
+  COMMERCIAL
+  VIEWER
+}
+
+model User {
+  notificationReads NotificationRead[]
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique @db.VarChar(254)
+  passwordHash String @map("password_hash")
+  mfa MfaCredential?
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  sessions AuthSession[]
+  memberships Membership[]
+  @@map("users")
+}
+
+model Membership {
+  tenantId String @map("tenant_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  role MembershipRole
+  additionalRoles MembershipRole[] @default([]) @map("additional_roles")
+  canDownloadReports Boolean @default(true) @map("can_download_reports")
+  version Int @default(1)
+  active Boolean @default(true)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@id([tenantId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model AuthSession {
+  id String @id @default(uuid()) @db.Uuid
+  familyId String @map("family_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  refreshHash String @unique @map("refresh_hash") @db.Char(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  rotatedAt DateTime? @map("rotated_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  @@index([familyId])
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+model MfaCredential {
+  userId String @id @map("user_id") @db.Uuid
+  secretCipher String @map("secret_cipher")
+  enabledAt DateTime? @map("enabled_at") @db.Timestamptz(3)
+  pendingExpiresAt DateTime? @map("pending_expires_at") @db.Timestamptz(3)
+  lastUsedStep BigInt? @map("last_used_step")
+  recoveryHashes String[] @map("recovery_hashes")
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@map("mfa_credentials")
+}
+
+model Work {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  name String @db.VarChar(200)
+  clientName String? @map("client_name") @db.VarChar(200)
+  city String? @db.VarChar(120)
+  state String? @db.Char(2)
+  address String? @db.VarChar(500)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+  deletedBy String? @map("deleted_by") @db.Uuid
+  version Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  @@index([tenantId, createdAt, id])
+  folders Folder[]
+  boreholes Borehole[]
+  @@unique([id, tenantId])
+  @@index([tenantId, deletedAt], map: "works_tenant_deleted_idx")
+  @@map("works")
+}
+
+model Folder {
+ id String @id @default(uuid()) @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ name String @db.VarChar(120)
+ deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+ deletedBy String? @map("deleted_by") @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ work Work @relation(fields: [workId, tenantId], references: [id, tenantId], onDelete: Restrict)
+ boreholes Borehole[]
+ @@unique([id, workId, tenantId])
+ @@unique([workId, tenantId, name])
+ @@index([tenantId, deletedAt], map: "folders_tenant_deleted_idx")
+  @@map("folders")
+}
+model Borehole {
+ id String @id @default(uuid()) @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ folderId String? @map("folder_id") @db.Uuid
+ code String @db.VarChar(60)
+ plannedDepthM Decimal? @map("planned_depth_m") @db.Decimal(8,2)
+ deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+ deletedBy String? @map("deleted_by") @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ work Work @relation(fields: [workId, tenantId], references: [id, tenantId], onDelete: Restrict)
+ folder Folder? @relation(fields: [folderId, workId, tenantId], references: [id, workId, tenantId], onDelete: Restrict)
+ @@unique([workId, tenantId, code])
+ @@index([folderId, workId, tenantId])
+ @@index([tenantId, deletedAt], map: "boreholes_tenant_deleted_idx")
+  sptTests SptTest[]
+ executedDepthM Decimal? @map("executed_depth_m") @db.Decimal(8,2)
+ waterLevelM Decimal? @map("water_level_m") @db.Decimal(8,2)
+ fieldDate DateTime? @map("field_date") @db.Date
+ technicalVersion Int @default(1) @map("technical_version")
+ reviewState String @default("DRAFT") @map("review_state") @db.VarChar(20)
+ approvedVersion Int? @map("approved_version")
+ reviewedBy String? @map("reviewed_by") @db.Uuid
+ reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(3)
+ reviewerName String? @map("reviewer_name") @db.VarChar(200)
+ reviewerRegistration String? @map("reviewer_registration") @db.VarChar(100)
+ reviewNote String? @map("review_note") @db.VarChar(2000)
+ soilLayers SoilLayer[]
+ technicalEvents TechnicalEvent[]
+ officialCoordinateId String? @map("official_coordinate_id") @db.Uuid
+ coordinates BoreholeCoordinate[] @relation("HoleCoordinates")
+ photos BoreholePhoto[]
+ officialCoordinate BoreholeCoordinate? @relation("OfficialCoordinate",fields:[officialCoordinateId,id,workId,tenantId],references:[id,boreholeId,workId,tenantId],onDelete:Restrict)
+ @@unique([id, workId, tenantId])
+ @@map("boreholes")
+}
+
+model SptTest {
+ id String @id @default(uuid()) @db.Uuid
+ boreholeId String @map("borehole_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ depthM Decimal @map("depth_m") @db.Decimal(8,2)
+ advances Json
+ fieldDetails Json? @map("field_details")
+ interruptionReason String? @map("interruption_reason") @db.VarChar(500)
+ result Json
+ engineVersion String @map("engine_version") @db.VarChar(40)
+ version Int @default(1)
+ createdBy String @map("created_by") @db.Uuid
+ updatedBy String @map("updated_by") @db.Uuid
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ borehole Borehole @relation(fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:Restrict)
+ @@unique([boreholeId,workId,tenantId,depthM])
+ @@map("spt_tests")
+}
+
+model SoilLayer {
+ id String @id @default(uuid()) @db.Uuid
+ boreholeId String @map("borehole_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ fromM Decimal @map("from_m") @db.Decimal(8,2)
+ toM Decimal @map("to_m") @db.Decimal(8,2)
+ soilType String @map("soil_type") @db.VarChar(120)
+ soilColor String? @map("soil_color") @db.VarChar(120)
+ soilMoisture String? @map("soil_moisture") @db.VarChar(20)
+ description String @db.VarChar(2000)
+ version Int @default(1)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ borehole Borehole @relation(fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:Restrict)
+ @@unique([boreholeId,workId,tenantId,fromM])
+ @@map("soil_layers")
+}
+model TechnicalEvent {
+ id String @id @default(uuid()) @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ boreholeId String @map("borehole_id") @db.Uuid
+ actorId String @map("actor_id") @db.Uuid
+ action String @db.VarChar(60)
+ technicalVersion Int @map("technical_version")
+ details Json @default("{}")
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ borehole Borehole @relation(fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:Restrict)
+ @@index([tenantId,boreholeId,createdAt],map:"technical_events_scope_idx")
+ @@map("technical_events")
+}
+
+model BoreholeCoordinate {
+ id String @id @default(uuid()) @db.Uuid
+ boreholeId String @map("borehole_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ kind String @db.VarChar(10)
+ eastingM Decimal @map("easting_m") @db.Decimal(11,2)
+ northingM Decimal @map("northing_m") @db.Decimal(11,2)
+ zone Int
+ hemisphere String @db.Char(1)
+ datum String @default("SIRGAS2000") @db.VarChar(20)
+ altitudeM Decimal? @map("altitude_m") @db.Decimal(9,2)
+ reference String @db.VarChar(500)
+ latitude Float
+ longitude Float
+ version Int @default(1)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ borehole Borehole @relation("HoleCoordinates",fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:Restrict)
+ officialFor Borehole[] @relation("OfficialCoordinate")
+ @@unique([boreholeId,workId,tenantId,kind])
+ @@unique([id,boreholeId,workId,tenantId])
+ @@map("borehole_coordinates")
+}
+model BoreholePhoto {
+ id String @id @default(uuid()) @db.Uuid
+ boreholeId String @map("borehole_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ objectKey String @unique @map("object_key")
+ thumbnailKey String @unique @map("thumbnail_key")
+ processingState String @default("PENDING") @map("processing_state") @db.VarChar(20)
+ attempts Int @default(0)
+ availableAt DateTime @default(now()) @map("available_at") @db.Timestamptz(3)
+ leaseToken String? @map("lease_token") @db.Uuid
+ leaseUntil DateTime? @map("lease_until") @db.Timestamptz(3)
+ errorCode String? @map("error_code") @db.VarChar(60)
+ sha256 String @db.Char(64)
+ mime String @db.VarChar(30)
+ sizeBytes Int @map("size_bytes")
+ purpose String? @db.VarChar(20)
+ caption String @db.VarChar(500)
+ width Int
+ height Int
+ gpsLatitude Float? @map("gps_latitude")
+ gpsLongitude Float? @map("gps_longitude")
+ crop Json @default("{\"x\":0,\"y\":0,\"width\":1,\"height\":1}")
+ version Int @default(1)
+ deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ borehole Borehole @relation(fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:Restrict)
+ @@map("borehole_photos")
+}
+
+model Report {
+ id String @id @default(uuid()) @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ title String @db.VarChar(200)
+ notes String @default("") @db.VarChar(4000)
+ composition Json
+ version Int @default(1)
+ issueCounter Int @default(0) @map("issue_counter")
+ currentIssueId String? @map("current_issue_id") @db.Uuid
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ issues ReportIssue[]
+ @@unique([id,workId,tenantId])
+ @@map("reports")
+}
+model ReportIssue {
+ id String @id @default(uuid()) @db.Uuid
+ reportId String @map("report_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ requestedBy String @map("requested_by") @db.Uuid
+ idempotencyKey String @map("idempotency_key") @db.Uuid
+ requestHash String @map("request_hash") @db.Char(64)
+ compositionVersion Int @map("composition_version")
+ issueNumber Int @map("issue_number")
+ snapshot Json
+ snapshotHash String @map("snapshot_hash") @db.Char(64)
+ state String @default("PENDING") @db.VarChar(20)
+ attempts Int @default(0)
+ availableAt DateTime @default(now()) @map("available_at") @db.Timestamptz(3)
+ leaseToken String? @map("lease_token") @db.Uuid
+ leaseUntil DateTime? @map("lease_until") @db.Timestamptz(3)
+ objectKey String? @map("object_key")
+ pdfSha256 String? @map("pdf_sha256") @db.Char(64)
+ errorCode String? @map("error_code") @db.VarChar(60)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+ report Report @relation(fields:[reportId,workId,tenantId],references:[id,workId,tenantId],onDelete:Restrict)
+ @@unique([tenantId,reportId,requestedBy,idempotencyKey])
+ @@unique([reportId,issueNumber])
+ @@unique([id,reportId,workId,tenantId])
+ @@index([state,availableAt,leaseUntil],map:"report_queue_claim_idx")
+ @@map("report_issues")
+}
+
+model NotificationRead {
+ tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ tenantId String @map("tenant_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ eventKey String @map("event_key") @db.VarChar(60)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ @@id([tenantId,userId,eventKey])
+ @@map("notification_reads")
+}
+
+model Client {
+ id String @id @default(uuid()) @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ name String @db.VarChar(200)
+ document String? @db.VarChar(40)
+ email String? @db.VarChar(254)
+ phone String? @db.VarChar(40)
+ address String? @db.VarChar(500)
+ version Int @default(1)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+ updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+ tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Restrict)
+ @@unique([id,tenantId])
+ @@index([tenantId,name,id])
+ @@map("clients")
+}

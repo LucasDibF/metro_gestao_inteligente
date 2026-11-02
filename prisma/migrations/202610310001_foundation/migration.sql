@@ -1,0 +1,6 @@
+CREATE TABLE "tenants" (
+ "id" UUID NOT NULL,
+ "name" VARCHAR(200) NOT NULL,
+ "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ CONSTRAINT "tenants_pkey" PRIMARY KEY ("id")
+);

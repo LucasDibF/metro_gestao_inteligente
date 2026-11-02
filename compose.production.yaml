@@ -1,0 +1,43 @@
+services:
+  api:
+    build: {context: ., dockerfile: infrastructure/docker/Dockerfile, target: api}
+    environment:
+      NODE_ENV: production
+      INPE_MAP_ENABLED: ${INPE_MAP_ENABLED:-true}
+      DEV_AUTH_BYPASS: 'false'
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      DATABASE_URL: ${DATABASE_URL:?Runtime PostgreSQL URL required}
+      JWT_SECRET: ${JWT_SECRET:?JWT secret required}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:?MFA encryption key required}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:?Private bucket required}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Restricted storage key required}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Restricted storage secret required}
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/v1/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  worker:
+    build: {context: ., dockerfile: infrastructure/docker/Dockerfile, target: worker}
+    environment:
+      NODE_ENV: production
+      INPE_MAP_ENABLED: ${INPE_MAP_ENABLED:-true}
+      WORKER_DATABASE_URL: ${WORKER_DATABASE_URL:?Restricted worker URL required}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:?Private bucket required}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Restricted storage key required}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Restricted storage secret required}
+    restart: unless-stopped
+    init: true
+    mem_limit: 1g
+    cpus: 1.5
+  web:
+    build: {context: ., dockerfile: infrastructure/docker/Dockerfile, target: web}
+    ports: [127.0.0.1:8080:8080]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped

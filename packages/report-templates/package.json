@@ -1,0 +1,14 @@
+{
+  "name": "@spt/report-templates",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "dependencies": {
+    "@spt/geotechnical-engine": "*"
+  }
+}

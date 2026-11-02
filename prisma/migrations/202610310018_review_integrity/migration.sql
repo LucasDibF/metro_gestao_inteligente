@@ -1,0 +1,5 @@
+ALTER TABLE boreholes DROP CONSTRAINT approved_version_matches;
+ALTER TABLE boreholes ADD CONSTRAINT approved_version_matches CHECK(review_state<>'APPROVED' OR (approved_version IS NOT NULL AND approved_version=technical_version AND reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL AND reviewer_name IS NOT NULL AND length(trim(reviewer_name))>0 AND reviewer_registration IS NOT NULL AND length(trim(reviewer_registration))>0));
+CREATE FUNCTION protect_photo_original() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+ IF NEW.object_key<>OLD.object_key OR NEW.thumbnail_key<>OLD.thumbnail_key OR NEW.sha256<>OLD.sha256 OR NEW.mime<>OLD.mime OR NEW.size_bytes<>OLD.size_bytes OR NEW.width<>OLD.width OR NEW.height<>OLD.height OR NEW.gps_latitude IS DISTINCT FROM OLD.gps_latitude OR NEW.gps_longitude IS DISTINCT FROM OLD.gps_longitude THEN RAISE EXCEPTION 'Photo original is immutable' USING ERRCODE='23514';END IF; RETURN NEW;END $$;
+CREATE TRIGGER photo_original_immutable BEFORE UPDATE ON borehole_photos FOR EACH ROW EXECUTE FUNCTION protect_photo_original();

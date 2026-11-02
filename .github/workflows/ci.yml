@@ -1,0 +1,46 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: spt
+          POSTGRES_PASSWORD: spt_local
+          POSTGRES_DB: spt
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U spt" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://spt_runtime:spt_runtime_local@localhost:5432/spt?schema=public
+      WORKER_DATABASE_URL: postgresql://spt_worker:spt_worker_ci_local@localhost:5432/spt?schema=public
+      S3_ENDPOINT: http://127.0.0.1:59000
+      S3_REGION: us-east-1
+      S3_BUCKET: spt-ci-private
+      S3_ACCESS_KEY_ID: spt-ci-local
+      S3_SECRET_ACCESS_KEY: spt-ci-local-only-storage
+      MIGRATION_DATABASE_URL: postgresql://spt:spt_local@localhost:5432/spt?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: node -e "console.log('JWT_SECRET=' + require('crypto').randomBytes(32).toString('hex'))" >> "$GITHUB_ENV"
+      - run: node -e "console.log('MFA_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).toString('hex'))" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run db:migrate
+      - run: npm run db:setup:local
+      - run: npm run worker:setup:local
+      - run: docker run -d --name spt-ci-storage -p 127.0.0.1:59000:9000 -e MINIO_ROOT_USER="$S3_ACCESS_KEY_ID" -e MINIO_ROOT_PASSWORD="$S3_SECRET_ACCESS_KEY" minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e server /data
+      - run: npm run storage:setup:local
+      - run: npx playwright install --with-deps chromium
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run build
+      - run: npm run test:browser
+      - run: npm audit --audit-level=high

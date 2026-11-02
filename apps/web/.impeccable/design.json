@@ -1,0 +1,494 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-02T21:49:31.834091+00:00",
+  "title": "Design System: Metro",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "Metro blue",
+        "canonical": "#1600ff",
+        "tonalRamp": [
+          "#f4f3ff",
+          "#e8e6ff",
+          "#b2aaff",
+          "#1600ff",
+          "#1200cc",
+          "#100099",
+          "#160b70"
+        ]
+      },
+      "brand-hover": {
+        "role": "primary",
+        "displayName": "brand-hover",
+        "canonical": "#1200cc"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "ink",
+        "canonical": "oklch(0.18 0.010 60)"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "muted",
+        "canonical": "oklch(0.50 0.008 60)"
+      },
+      "page": {
+        "role": "neutral",
+        "displayName": "page",
+        "canonical": "oklch(0.985 0.004 70)"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "surface",
+        "canonical": "oklch(1 0 0)"
+      },
+      "subtle": {
+        "role": "neutral",
+        "displayName": "subtle",
+        "canonical": "oklch(0.965 0.006 70)"
+      },
+      "intro": {
+        "role": "neutral",
+        "displayName": "Intro",
+        "canonical": "#eef0ff"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "line",
+        "canonical": "oklch(0.88 0.004 60)"
+      },
+      "input-line": {
+        "role": "neutral",
+        "displayName": "input-line",
+        "canonical": "oklch(0.70 0.006 60)"
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "focus",
+        "canonical": "oklch(0.55 0.120 235)"
+      },
+      "selection-bg": {
+        "role": "neutral",
+        "displayName": "selection-bg",
+        "canonical": "#e8e6ff"
+      },
+      "selection-text": {
+        "role": "neutral",
+        "displayName": "selection-text",
+        "canonical": "oklch(0.18 0.010 60)"
+      },
+      "placeholder": {
+        "role": "neutral",
+        "displayName": "placeholder",
+        "canonical": "oklch(0.50 0.008 60)"
+      },
+      "status-bg": {
+        "role": "neutral",
+        "displayName": "status-bg",
+        "canonical": "#dcead8"
+      },
+      "status-text": {
+        "role": "neutral",
+        "displayName": "status-text",
+        "canonical": "#21472f"
+      },
+      "danger": {
+        "role": "neutral",
+        "displayName": "Danger",
+        "canonical": "#8c302c",
+        "tonalRamp": [
+          "oklch(15.00% 0.0473 26.07)",
+          "oklch(26.43% 0.0833 26.07)",
+          "oklch(37.86% 0.1194 26.07)",
+          "oklch(49.29% 0.1261 26.07)",
+          "oklch(60.71% 0.1261 26.07)",
+          "oklch(72.14% 0.1171 26.07)",
+          "oklch(83.57% 0.0691 26.07)",
+          "oklch(95.00% 0.0210 26.07)"
+        ]
+      },
+      "danger-hover": {
+        "role": "neutral",
+        "displayName": "Danger Hover",
+        "canonical": "#70221f",
+        "tonalRamp": [
+          "oklch(15.00% 0.0416 26.18)",
+          "oklch(26.43% 0.0733 26.18)",
+          "oklch(37.86% 0.1050 26.18)",
+          "oklch(49.29% 0.1109 26.18)",
+          "oklch(60.71% 0.1109 26.18)",
+          "oklch(72.14% 0.1030 26.18)",
+          "oklch(83.57% 0.0607 26.18)",
+          "oklch(95.00% 0.0185 26.18)"
+        ]
+      },
+      "error-bg": {
+        "role": "neutral",
+        "displayName": "Error Bg",
+        "canonical": "#fcebe7",
+        "tonalRamp": [
+          "oklch(15.00% 0.0073 33.37)",
+          "oklch(26.43% 0.0128 33.37)",
+          "oklch(37.86% 0.0183 33.37)",
+          "oklch(49.29% 0.0193 33.37)",
+          "oklch(60.71% 0.0193 33.37)",
+          "oklch(72.14% 0.0180 33.37)",
+          "oklch(83.57% 0.0106 33.37)",
+          "oklch(95.00% 0.0032 33.37)"
+        ]
+      },
+      "error-text": {
+        "role": "neutral",
+        "displayName": "Error Text",
+        "canonical": "#8b2824",
+        "tonalRamp": [
+          "oklch(15.00% 0.0505 26.76)",
+          "oklch(26.43% 0.0890 26.76)",
+          "oklch(37.86% 0.1275 26.76)",
+          "oklch(49.29% 0.1347 26.76)",
+          "oklch(60.71% 0.1347 26.76)",
+          "oklch(72.14% 0.1251 26.76)",
+          "oklch(83.57% 0.0737 26.76)",
+          "oklch(95.00% 0.0224 26.76)"
+        ]
+      },
+      "notice-bg": {
+        "role": "neutral",
+        "displayName": "Notice Bg",
+        "canonical": "#dcead8",
+        "tonalRamp": [
+          "oklch(15.00% 0.0106 138.72)",
+          "oklch(26.43% 0.0187 138.72)",
+          "oklch(37.86% 0.0268 138.72)",
+          "oklch(49.29% 0.0283 138.72)",
+          "oklch(60.71% 0.0283 138.72)",
+          "oklch(72.14% 0.0263 138.72)",
+          "oklch(83.57% 0.0155 138.72)",
+          "oklch(95.00% 0.0047 138.72)"
+        ]
+      },
+      "notice-text": {
+        "role": "neutral",
+        "displayName": "Notice Text",
+        "canonical": "#21472f",
+        "tonalRamp": [
+          "oklch(15.00% 0.0227 154.31)",
+          "oklch(26.43% 0.0400 154.31)",
+          "oklch(37.86% 0.0573 154.31)",
+          "oklch(49.29% 0.0606 154.31)",
+          "oklch(60.71% 0.0606 154.31)",
+          "oklch(72.14% 0.0563 154.31)",
+          "oklch(83.57% 0.0332 154.31)",
+          "oklch(95.00% 0.0101 154.31)"
+        ]
+      },
+      "recovery-bg": {
+        "role": "neutral",
+        "displayName": "recovery-bg",
+        "canonical": "oklch(0.965 0.006 70)"
+      },
+      "scrollbar": {
+        "role": "neutral",
+        "displayName": "Scrollbar",
+        "canonical": "#b8afa4",
+        "tonalRamp": [
+          "oklch(15.00% 0.0070 73.02)",
+          "oklch(26.43% 0.0123 73.02)",
+          "oklch(37.86% 0.0176 73.02)",
+          "oklch(49.29% 0.0186 73.02)",
+          "oklch(60.71% 0.0186 73.02)",
+          "oklch(72.14% 0.0173 73.02)",
+          "oklch(83.57% 0.0102 73.02)",
+          "oklch(95.00% 0.0031 73.02)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Títulos"
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Títulos"
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Títulos"
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Texto e controles observados"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto e controles observados"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Texto e controles observados"
+      },
+      "help": {
+        "displayName": "Help",
+        "purpose": "Texto e controles observados"
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Texto e controles observados"
+      }
+    },
+    "shadows": [
+      {
+        "name": "row-hover",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -2px rgb(0 0 0 / 10%)"
+      }
+    ],
+    "motion": [
+      {
+        "name": "control",
+        "value": "color/background/border/box-shadow 150ms ease",
+        "purpose": "Somente com prefers-reduced-motion: no-preference"
+      },
+      {
+        "name": "sidebar",
+        "value": "width/margin-left 200ms ease; none on mobile breakpoint",
+        "purpose": "Somente com prefers-reduced-motion: no-preference"
+      },
+      {
+        "name": "drawer-open",
+        "value": "translateX(-100%) to 0; 300ms cubic-bezier(.16,1,.3,1)",
+        "purpose": "Somente com prefers-reduced-motion: no-preference"
+      },
+      {
+        "name": "drawer-close",
+        "value": "translateX(0) to -100%; 200ms ease-in",
+        "purpose": "Somente com prefers-reduced-motion: no-preference"
+      },
+      {
+        "name": "spinner",
+        "value": "rotate 360deg; 1s linear infinite",
+        "purpose": "Somente com prefers-reduced-motion: no-preference"
+      },
+      {
+        "name": "tooltip",
+        "value": "opacity 150ms ease; delay 200ms",
+        "purpose": "Somente com prefers-reduced-motion: no-preference"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "desktop-menu",
+        "value": "1024px"
+      },
+      {
+        "name": "mobile-controls",
+        "value": "760px"
+      }
+    ],
+    "focus": {
+      "value": "2px solid var(--focus); outline-offset:2px"
+    },
+    "spt": {
+      "layout": "3 avanços em colunas; até 760px empilhados, golpes/penetração em pares",
+      "controls": "stepper de golpes, atalho 15cm, solo manual com datalist"
+    },
+    "source": [
+      "src/styles.css",
+      "src/ui/AppShell.tsx",
+      "src/ui/Button.tsx",
+      "src/ui/Brand.tsx",
+      "src/ui/LoadingState.tsx",
+      "src/main.tsx"
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "strokeWidth": 1.75,
+      "controlSize": "16px",
+      "source": "Reference sondagem/frontend/components"
+    },
+    "themes": {
+      "light": "Estratos :root tokens copied from reference",
+      "dark": "Estratos .dark tokens copied into :root[data-theme=dark]",
+      "preferences": [
+        "spt.theme",
+        "spt.sidebarCollapsed"
+      ],
+      "authStorage": "memory only"
+    },
+    "fieldWorkflow": {
+      "components": [
+        "MetreDetails",
+        "FieldChecklist",
+        "GeotechnicalProfile",
+        "ReportCenter",
+        "Notifications",
+        "Breadcrumb"
+      ],
+      "profile": "SVG with horizontal scroll, equivalent table, measured layers and definitive N values only",
+      "notifications": {
+        "width": "min(360px, calc(100vw - 32px))",
+        "maxHeight": "70dvh",
+        "refresh": "30s while visible, on open and manual"
+      },
+      "newColors": false
+    },
+    "folderTree": {
+      "source": "HTML/CSS supplied by user",
+      "width": "320px desktop; responsive below 1100px",
+      "rowRadius": "4px",
+      "padding": "24px desktop;16px mobile",
+      "rowMinHeight": "28px desktop;44px mobile",
+      "lines": "1px;11px indentation + 11px padding",
+      "animation": "grid-template-rows 0fr/1fr;300ms ease-in-out; respects reduced motion",
+      "accessibility": "native buttons, aria-expanded/controls, inert/aria-hidden collapsed branches",
+      "data": "existing folder/borehole relationships; lazy20-row pages per branch"
+    },
+    "interactiveSheet": {
+      "mode": "Operate",
+      "surface": "native geotechnical analysis, no A4 or iframe",
+      "rowHeightPx": 64,
+      "firstSum": "#2155b5",
+      "finalSum": "#c62828",
+      "breakpointPx": 1200,
+      "motion": "900ms curve trace; respects reduced motion",
+      "samplingAlignment": "record d occupies geological interval d-1..d; readings/method rows match interval bounds, values/curve markers at interval center; depth ticks remain at physical boundaries",
+      "soilDescription": "comma-separated continuous description; lower-case continuation initials, preserving abbreviations and internal free-text punctuation"
+    },
+    "workflow": {
+      "entry": "Abrir furo; Identificação interna ENGINEER, nomes preservados",
+      "sections": [
+        "Visão geral",
+        "Registro de campo",
+        "Análise geotécnica",
+        "Revisão técnica"
+      ],
+      "roles": "ADMIN/COMMERCIAL isolados: Visão geral sem análise; OPERATOR: Visão geral/Registro de campo; ENGINEER: análise/revisão/correção/aprovação/devolução/emissão; VIEWER: análise somente leitura, sem revisão; additionalRoles explícitos cumulativos",
+      "fieldLock": "OPERATOR escreve DRAFT; envio bloqueia até devolução ENGINEER",
+      "mobile": "até 600px, navegação em 2 colunas; controles min44px",
+      "management": "form max720px; checkbox18px; rótulos min44px; gap10px",
+      "analysisAlignment": "Golpes centralizados na ordenada profundidade/ponto/método; critério DOM <=1px",
+      "verification": "Correção atual documentada sem presumir novo fechamento de testes; identidade/PDF preservados",
+      "fieldSubmission": "Nota e checklist no Registro de campo; envio bloqueia OPERATOR até devolução ENGINEER",
+      "serverBoundaries": "Análise/folha ENGINEER/VIEWER; camada manual e planejada ENGINEER; relatórios ENGINEER/COMMERCIAL/ADMIN/VIEWER sem OPERATOR isolado",
+      "retainedAccess": "ENGINEER ainda cadastra clientes/obras; ADMIN lixeira/consulta; COMMERCIAL relatórios leitura/download condicionado"
+    },
+    "soilState": {
+      "rule": "NBR6484-2020-A1-v1",
+      "input": "Tipo predominante informado + N-SPT CONVENTIONAL inteiro não negativo",
+      "display": "Texto em resultado/lista/análise e detalhes por metro/camada; ellipsis somente no resumo, title e detalhe integral preservados",
+      "reference": "details/summary; corpo14px; células8px; grade2col/gap24px; 1col até760px; summary min32px",
+      "geometry": "Escala, centros e alinhamento de golpes preservados",
+      "pdf": "Novas emissões template0.8.5, snapshot soilStateRuleVersion; histórico preservado",
+      "verification": "77 unitários e16 integração confirmados antes de regressão adicional de login; seis auth passaram; navegador final pendente"
+    },
+    "fieldCreation": {
+      "names": "Nomes mantidos; posição das ações melhorada",
+      "navigation": "sticky top64px z8, padding12px 0; Identificação ENGINEER interna; Fotografias por perfil; guardas dirty campo/fotos",
+      "newWork": "initialBoreholeCount0–200/initialFolderName opcional; transação e funçãoSQL restrita só obra nova; raiz sem pseudopasta",
+      "metre": "INITIAL_SOIL em novo metro1, NOT_TESTED sem golpes/N; legado preservado; descrição/caption opcionais; repetição tipo/cor explícita; Não executado limpa seguintes; Último metro sem fabricar zero",
+      "pdf": "0.8.7, grade integral e linhas método, primeiro solo incluído; histórico preservado",
+      "verification": "84unit e2integrações dirigidas confirmados; navegador e repetição completa em andamento; quatro páginas sintéticas aprovadas"
+    },
+    "generateReport": {
+      "background": "#236b45",
+      "hover": "#195334",
+      "shadow": "0 3px 8px #123c2926",
+      "transition": "background-color .2s, box-shadow .2s",
+      "motion": "report-ready .45s ease-out both; report-working1.2s ease-in-out infinite; somente no-preference"
+    },
+    "partialGraphReading": {
+      "source": "sptGraphReading compartilhado no motor isolado",
+      "representation": "Linhas seguem o último metro com círculos existentes, sem rótulos nem símbolos adicionais; cores preservadas",
+      "example": "30/30/30 golpes +150/140/150mm →60/29 em ambas séries com Nnull; único30/14 somente primeira série",
+      "bounds": "Rótulos20/40m contidos no quadro; terminal da tela abaixo para evitar sobreposição",
+      "pdf": "0.8.8, versões e emissões antigas preservadas",
+      "unchanged": "Medições/N/classificação/versão aritmética",
+      "verification": "87unit e1browser inicial confirmados; regressão boundary/reteste layout/16integrações em execução; PDF4p preflight/render/visual aprovados"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary button",
+      "html": "<button class=\"ds-control ds-primary\">Salvar</button>",
+      "css": ".ds-primary{font-family:'IBM Plex Sans',sans-serif;background:var(--brand,#1600ff);color:#fff;border:1px solid var(--line,oklch(0.88 0.004 60));border-radius:8px;padding:8px 16px;min-height:36px;font-weight:500;cursor:pointer}.ds-primary:hover{background:#1200cc}.ds-control:focus-visible{outline:2px solid var(--focus,oklch(0.55 0.120 235));outline-offset:2px}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary button",
+      "html": "<button class=\"ds-control ds-secondary\">Salvar</button>",
+      "css": ".ds-secondary{font-family:'IBM Plex Sans',sans-serif;background:transparent;color:var(--ink,#292520);border:1px solid var(--line,oklch(0.88 0.004 60));border-radius:8px;padding:8px 16px;min-height:36px;font-weight:500;cursor:pointer}.ds-secondary:hover{background:#f0ece6}.ds-control:focus-visible{outline:2px solid var(--focus,oklch(0.55 0.120 235));outline-offset:2px}"
+    },
+    {
+      "name": "Danger button",
+      "kind": "button",
+      "description": "Danger button",
+      "html": "<button class=\"ds-control ds-danger\">Salvar</button>",
+      "css": ".ds-danger{font-family:'IBM Plex Sans',sans-serif;background:#8c302c;color:#fff;border:1px solid var(--line,oklch(0.88 0.004 60));border-radius:8px;padding:8px 16px;min-height:36px;font-weight:500;cursor:pointer}.ds-danger:hover{background:#70221f}.ds-control:focus-visible{outline:2px solid var(--focus,oklch(0.55 0.120 235));outline-offset:2px}"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "description": "Text field",
+      "html": "<label class=\"ds-label\" for=\"ds-name\">Nome da obra</label><input class=\"ds-control ds-input\" id=\"ds-name\" placeholder=\"Informe o nome\">",
+      "css": ".ds-label{font-family:'IBM Plex Sans',sans-serif;display:block;font-size:14px;font-weight:500;margin-bottom:7px}.ds-input{font-family:'IBM Plex Sans',sans-serif;width:100%;min-height:47px;border:1px solid #a69d92;border-radius:8px;padding:10px 12px;background:#fff;color:var(--ink,#292520)}.ds-control:focus-visible{outline:2px solid var(--focus,oklch(0.55 0.120 235));outline-offset:2px}"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "description": "Navigation",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-control ds-active\" aria-current=\"page\">Obras</button><button class=\"ds-control\">Segurança da conta</button></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:6px}.ds-nav button{font-family:'IBM Plex Sans',sans-serif;border:0;border-radius:8px;padding:10px 14px;text-align:left;min-height:44px;color:var(--muted,#655f58);background:transparent}.ds-nav .ds-active{background:var(--brand,#1600ff);color:#fff}.ds-nav button:hover{background:#f0ece6;color:var(--ink,#292520)}.ds-control:focus-visible{outline:2px solid var(--focus,oklch(0.55 0.120 235));outline-offset:2px}"
+    },
+    {
+      "name": "Session status",
+      "kind": "chip",
+      "description": "Session status",
+      "html": "<span class=\"ds-status\">Sessão ativa</span>",
+      "css": ".ds-status{font-family:'IBM Plex Sans',sans-serif;display:inline-block;font-size:13px;background:#dde9dd;color:#28533b;padding:6px 12px;border-radius:20px}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Panel",
+      "html": "<section class=\"ds-panel\"><h2>Dados do furo</h2><p>Informações registradas em campo.</p></section>",
+      "css": ".ds-panel{font-family:'IBM Plex Sans',sans-serif;padding:28px;background:#fff;border:1px solid var(--line,oklch(0.88 0.004 60));border-radius:12px;color:var(--ink,#292520)}.ds-panel h2{font-family:Fraunces,Georgia,serif;font-size:26px;font-weight:500}.ds-panel p{color:var(--muted,#655f58)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Metro — Gestão Inteligente",
+    "overview": "Identidade tipográfica metro. em vetor, ponto quadrado azul e assinatura Gestão Inteligente. Azul cobalto para ações e seleção; temas claro/escuro, navegação e comportamentos preservados.",
+    "keyCharacteristics": [
+      "Superfícies planas",
+      "Permissões preservadas",
+      "Formulários com rótulos visíveis"
+    ],
+    "rules": [
+      {
+        "name": "The Flat Surface Rule",
+        "body": "Agrupar com tom, borda e espaço; sem sombras.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Semantic State Rule",
+        "body": "Marca identifica ação; estados mantêm semântica e texto explícito.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do manter foco visível e rótulos explícitos.",
+      "Do preservar contextos de obra e furo."
+    ],
+    "donts": [
+      "Don’t usar a paleta verde anterior como marca.",
+      "Não substituir as cores técnicas dos solos e das curvas SPT pela paleta de marca."
+    ],
+    "reference": "Marca escolhida pelo usuário em 02/11/2026: wordmark em minúsculas, ponto quadrado azul e ícone m.; extensão da interface existente, sem redesenho dos fluxos."
+  }
+}
