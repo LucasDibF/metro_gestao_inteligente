@@ -31,6 +31,13 @@ jobs:
       - run: node -e "console.log('MFA_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).toString('hex'))" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm run db:generate
+      # Migrations grant privileges to this role before table provisioning runs.
+      - name: Create restricted runtime role before migrations
+        env:
+          PGPASSWORD: spt_local
+        run: >-
+          psql -h localhost -U spt -d spt -v ON_ERROR_STOP=1
+          -c "CREATE ROLE spt_runtime NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;"
       - run: npm run db:migrate
       - run: npm run db:setup:local
       - run: npm run worker:setup:local
