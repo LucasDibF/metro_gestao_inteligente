@@ -95,9 +95,7 @@ test('workspace filters works, searches global reports and opens review notifica
       path: 'apps/web/.impeccable/review/notifications-mobile.png',
     });
     await page.getByRole('button', { name: /Não lida · Furo devolvido para correção/ }).click();
-    await expect(
-      page.getByRole('heading', { name: 'Furo · SP-01', exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Furo · SP-01', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Revisão técnica', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Conferência do furo' })).toBeVisible();
     expect(await db.notificationRead.count({ where: { tenantId, userId } })).toBe(1);

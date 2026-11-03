@@ -106,9 +106,7 @@ export class AuthService {
     };
   }
 
-  async authenticate(
-    token: string,
-  ): Promise<
+  async authenticate(token: string): Promise<
     Identity & {
       role: import('@prisma/client').MembershipRole;
       additionalRoles: import('@prisma/client').MembershipRole[];

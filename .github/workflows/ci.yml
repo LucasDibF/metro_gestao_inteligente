@@ -42,17 +42,25 @@ jobs:
       - run: npm run db:setup:local
       - run: npm run worker:setup:local
       # Build the official source: historical public container images were removed.
+      - uses: actions/cache@v4
+        id: minio-cache
+        with:
+          path: ${{ runner.temp }}/minio
+          key: minio-9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a-${{ runner.os }}-${{ runner.arch }}-go1.24.8
       - uses: actions/checkout@v4
+        if: steps.minio-cache.outputs.cache-hit != 'true'
         with:
           repository: minio/minio
           ref: 9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a
           path: .ci-minio
           persist-credentials: false
       - uses: actions/setup-go@v5
+        if: steps.minio-cache.outputs.cache-hit != 'true'
         with:
           go-version: 1.24.8
           cache: false
       - name: Build test storage from pinned official source
+        if: steps.minio-cache.outputs.cache-hit != 'true'
         working-directory: .ci-minio
         run: go build -o "$RUNNER_TEMP/minio" .
       - name: Start isolated test storage

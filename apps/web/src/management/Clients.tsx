@@ -53,7 +53,12 @@ export function Clients({ profile, onError }: { profile: Profile; onError: (e: u
       await auth.request('/clientes' + (current ? '/' + current.id : ''), {
         method: current ? 'PUT' : 'POST',
         body: JSON.stringify({
-          ...Object.fromEntries(['name','document','email','phone','address'].map(key=>[key,String(form.get(key)??'')])),
+          ...Object.fromEntries(
+            ['name', 'document', 'email', 'phone', 'address'].map((key) => [
+              key,
+              String(form.get(key) ?? ''),
+            ]),
+          ),
           ...(current ? { version: current.version } : {}),
         }),
       });

@@ -120,12 +120,10 @@ test('administration creates access, commerce maintains clients, and operator su
     await expect(
       page.getByLabel('Descrição do solo (opcional)', { exact: true }),
     ).not.toHaveAttribute('required', '');
-    await page
-      .locator('.spt-editor')
-      .screenshot({
-        path: 'apps/web/.impeccable/review/initial-soil-desktop.png',
-        animations: 'disabled',
-      });
+    await page.locator('.spt-editor').screenshot({
+      path: 'apps/web/.impeccable/review/initial-soil-desktop.png',
+      animations: 'disabled',
+    });
     await page.getByRole('button', { name: 'Salvar metro', exact: true }).click();
     await page.getByRole('button', { name: 'Registrar metro', exact: true }).click();
     await page
@@ -253,12 +251,10 @@ test('administration creates access, commerce maintains clients, and operator su
     await expect(
       mobile.getByRole('heading', { name: 'Identificação e planejamento', exact: true }),
     ).toBeVisible();
-    await mobile
-      .locator('.technical-screen')
-      .screenshot({
-        path: 'apps/web/.impeccable/review/identification-mobile.png',
-        animations: 'disabled',
-      });
+    await mobile.locator('.technical-screen').screenshot({
+      path: 'apps/web/.impeccable/review/identification-mobile.png',
+      animations: 'disabled',
+    });
     await mobile.close();
   } finally {
     const newUsers = await db.membership.findMany({
