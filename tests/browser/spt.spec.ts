@@ -378,7 +378,7 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
       page.getByRole('heading', { name: 'Emissões · Relatório sintético completo', exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByAltText('Prévia do croqui com os furos selecionados em laranja'),
+      page.getByAltText('Prévia do croqui com os furos selecionados em azul'),
     ).toBeVisible();
     await expect(page.getByText('Google Maps não configurado.', { exact: false })).toBeVisible();
     await expect(
