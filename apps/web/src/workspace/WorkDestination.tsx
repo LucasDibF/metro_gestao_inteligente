@@ -15,11 +15,13 @@ export function WorkDestination({
   profile,
   onBack,
   onError,
+  onEditingChange,
 }: {
   target: WorkTarget;
   profile: Profile;
   onBack: () => void;
   onError: (e: unknown) => void;
+  onEditingChange?: (editing: boolean) => void;
 }) {
   const [work, setWork] = useState<{ id: string; name: string } | null>(null),
     [hole, setHole] = useState<{ id: string; code: string } | null>(null),
@@ -69,8 +71,15 @@ export function WorkDestination({
       profile={profile}
       onError={onError}
       onBack={onBack}
+      onEditingChange={onEditingChange}
     />
   ) : (
-    <Reports work={work} profile={profile} onError={onError} onBack={onBack} />
+    <Reports
+      work={work}
+      profile={profile}
+      onError={onError}
+      onBack={onBack}
+      onEditingChange={onEditingChange}
+    />
   );
 }

@@ -13,7 +13,15 @@ interface Client {
   address: string | null;
   version: number;
 }
-export function Clients({ profile, onError }: { profile: Profile; onError: (e: unknown) => void }) {
+export function Clients({
+  profile,
+  onError,
+  onEditingChange,
+}: {
+  profile: Profile;
+  onError: (e: unknown) => void;
+  onEditingChange?: (editing: boolean) => void;
+}) {
   const [data, setData] = useState<{ items: Client[]; total: number } | null>(null),
     [editing, setEditing] = useState<Client | 'new' | null>(null),
     [q, setQ] = useState(''),
@@ -23,6 +31,10 @@ export function Clients({ profile, onError }: { profile: Profile; onError: (e: u
     [error, setError] = useState(''),
     [message, setMessage] = useState('');
   const canWrite = hasRole(profile, 'COMMERCIAL', 'ENGINEER');
+  useEffect(() => {
+    onEditingChange?.(Boolean(editing));
+    return () => onEditingChange?.(false);
+  }, [editing, onEditingChange]);
   useEffect(() => {
     let active = true;
     auth

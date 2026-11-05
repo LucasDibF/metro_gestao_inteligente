@@ -1,0 +1,69 @@
+/* Metro identity. Layout and technical data colors keep their existing roles. */
+.brand-link {
+  font-family: 'IBM Plex Sans', sans-serif;
+  line-height: 1;
+}
+.brand-link.ui-button,
+.brand-link.ui-button:hover {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+}
+.metro-wordmark {
+  display: block;
+  width: 164px;
+  height: 58px;
+  object-fit: contain;
+}
+.metro-icon {
+  display: block;
+}
+.brand-dark.metro-wordmark {
+  display: none;
+}
+[data-theme='dark'] .brand-light.metro-wordmark {
+  display: none;
+}
+[data-theme='dark'] .brand-dark.metro-wordmark {
+  display: block;
+}
+.sidebar-brand .metro-wordmark {
+  width: 144px;
+  height: 44px;
+}
+.sidebar-brand {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.login-brand .metro-wordmark {
+  width: 244px;
+  height: 86px;
+}
+.shell-footer .metro-wordmark {
+  width: 136px;
+  height: 48px;
+}
+:root[data-theme='dark'] {
+  --brand: #6552ff;
+  --brand-hover: #5644e8;
+  --brand-soft: #29224f;
+  --primary-foreground: #fff;
+  --sidebar-primary-foreground: #fff;
+}
+[data-theme='dark'] .work-link.ui-button:hover,
+[data-theme='dark'] .breadcrumb button,
+[data-theme='dark'] .ui-loading svg {
+  color: #b2aaff;
+}
+
+.company-logo {
+  display: block;
+  width: min(100%, 280px);
+  height: auto;
+  max-height: 76px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 12px;
+}

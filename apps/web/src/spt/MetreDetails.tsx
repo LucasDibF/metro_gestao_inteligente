@@ -7,11 +7,6 @@ export const methods: Record<string, string> = {
   CA: 'CA — Circulação de água',
   SP_CA: 'SP + CA — Percussão e circulação de água',
 };
-export const recoveries: Record<string, string> = {
-  INTEGRA: 'Íntegra',
-  PARCIAL: 'Parcial',
-  NENHUMA: 'Nenhuma',
-};
 export function MetreDetails({ value }: { value?: FieldDetails | null }) {
   return (
     <div className="field-pair">
@@ -24,21 +19,6 @@ export function MetreDetails({ value }: { value?: FieldDetails | null }) {
         >
           <option value="">Não informado</option>
           {Object.entries(methods).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="metre-recovery">Recuperação da amostra</label>
-        <select
-          id="metre-recovery"
-          name="sampleRecovery"
-          defaultValue={value?.sampleRecovery ?? ''}
-        >
-          <option value="">Não informada</option>
-          {Object.entries(recoveries).map(([key, label]) => (
             <option key={key} value={key}>
               {label}
             </option>

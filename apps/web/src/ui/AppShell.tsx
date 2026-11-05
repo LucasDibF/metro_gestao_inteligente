@@ -31,12 +31,15 @@ const items = [
   { id: 'security', label: 'Segurança da conta', icon: ShieldCheck },
   { id: 'trash', label: 'Lixeira', icon: Trash2 },
 ] as const;
+const editingLockId = 'navigation-lock-reason';
 export function AppShell({
   profile,
   tab,
   onTab,
   busy,
   recovery,
+  editing,
+  onHome,
   onLogout,
   toolbar,
   onTarget,
@@ -48,6 +51,8 @@ export function AppShell({
   onTab: (tab: WorkspaceTab) => void;
   busy: boolean;
   recovery: boolean;
+  editing: boolean;
+  onHome: () => void;
   onLogout: () => void;
   toolbar?: ReactNode;
   onTarget: (target: WorkTarget) => void;
@@ -68,6 +73,8 @@ export function AppShell({
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [closing, setClosing] = useState(false);
+  const locked = recovery || editing;
+  const lockDescription = editing ? editingLockId : undefined;
   useEffect(() => {
     const media = matchMedia('(min-width: 1024px)');
     const closeOnDesktop = () => {
@@ -95,6 +102,11 @@ export function AppShell({
     onTab(value);
     if (drawer.current?.open) closeDrawer();
   }
+  function goHome() {
+    onHome();
+    if (drawer.current?.open) closeDrawer();
+  }
+  const brand = <Brand onHome={goHome} disabled={locked} describedBy={lockDescription} />;
   function toggleTheme() {
     const next = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
@@ -132,7 +144,8 @@ export function AppShell({
               key={item.id}
               icon={item.icon}
               className={tab === item.id ? 'selected' : 'secondary'}
-              disabled={recovery}
+              disabled={locked}
+              aria-describedby={lockDescription}
               aria-label={compact ? item.label : undefined}
               data-tooltip={compact ? item.label : undefined}
               aria-current={tab === item.id ? 'page' : undefined}
@@ -151,7 +164,7 @@ export function AppShell({
       </a>
       <aside className="workspace-sidebar" aria-label="Navegação principal">
         <div className="sidebar-brand">
-          {!collapsed && <Brand />}
+          {!collapsed && brand}
           <Button
             className="ghost icon-button"
             icon={collapsed ? PanelLeftOpen : PanelLeftClose}
@@ -176,7 +189,7 @@ export function AppShell({
       >
         <div className="drawer-content">
           <div className="sidebar-brand">
-            <Brand />
+            {brand}
             <Button
               className="ghost icon-button"
               icon={X}
@@ -197,6 +210,8 @@ export function AppShell({
             className="ghost icon-button mobile-menu-button"
             icon={Menu}
             aria-label="Abrir menu"
+            disabled={editing}
+            aria-describedby={lockDescription}
             onClick={() => {
               setClosing(false);
               drawer.current?.showModal();
@@ -204,7 +219,12 @@ export function AppShell({
           />
           <span className="workspace-location">{items.find((item) => item.id === tab)?.label}</span>
           <div className="header-actions">
-            <Notifications onOpen={onTarget} onError={onError} disabled={recovery} />
+            <Notifications
+              onOpen={onTarget}
+              onError={onError}
+              disabled={locked}
+              describedBy={lockDescription}
+            />
             <Button
               className="ghost icon-button"
               icon={theme === 'light' ? Moon : Sun}
@@ -216,13 +236,15 @@ export function AppShell({
               icon={UserRound}
               title="Segurança da conta"
               aria-label="Abrir perfil"
-              disabled={recovery}
+              disabled={locked}
+              aria-describedby={lockDescription}
               onClick={() => select('security')}
             />
             <Button
               className="ghost logout-button"
               icon={LogOut}
-              disabled={busy || recovery}
+              disabled={busy || locked}
+              aria-describedby={lockDescription}
               loading={busy}
               onClick={onLogout}
             >
@@ -230,13 +252,19 @@ export function AppShell({
             </Button>
           </div>
         </header>
+        {editing ? (
+          <p id={editingLockId} className="navigation-lock" role="status">
+            Há uma edição aberta. Salve ou cancele para usar o menu, o perfil, as notificações ou
+            sair da conta.
+          </p>
+        ) : null}
         {toolbar}
         <main id="workspace-content" className="account" tabIndex={-1}>
           {children}
         </main>
       </div>
       <footer className="shell-footer">
-        <Brand />
+        {brand}
         <span>{profile.tenant.name}</span>
         <p>Ao recarregar a página, entre novamente. Sua sessão não é salva neste navegador.</p>
       </footer>

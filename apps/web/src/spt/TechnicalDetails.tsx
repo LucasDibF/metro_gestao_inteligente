@@ -17,7 +17,6 @@ import {
   ClipboardCheck,
   CheckCheck,
   Undo2,
-  Trash2,
 } from 'lucide-react';
 import { FilesPanel } from '../files/FilesPanel';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -58,6 +57,10 @@ const states = {
   IN_REVIEW: 'Aguardando revisão',
   APPROVED: 'Aprovado tecnicamente',
 };
+function requireNoteText(event: FormEvent<HTMLTextAreaElement>): void {
+  const field = event.currentTarget;
+  field.setCustomValidity(field.value.trim() ? '' : 'Escreva o parecer da revisão.');
+}
 const eventNames: Record<string, string> = {
   SPT_SOIL_SAVED: 'Ensaio e solo salvos juntos',
   FIELD_DATA_UPDATED: 'Dados de campo atualizados',
@@ -172,9 +175,13 @@ export function TechnicalDetails({
     event.preventDefault();
     if (!data) return;
     const values = new FormData(event.currentTarget);
-    setBusy(true);
     setError('');
     setMessage('');
+    if (kind === 'layer' && Number(values.get('from')) >= Number(values.get('to'))) {
+      setError('A profundidade em “Até” precisa ser maior que em “De”.');
+      return;
+    }
+    setBusy(true);
     let path = base,
       method = 'PUT',
       body: Record<string, unknown> = {};
@@ -192,7 +199,7 @@ export function TechnicalDetails({
       body = {
         fromM: String(values.get('from')),
         toM: String(values.get('to')),
-        soilType: String(values.get('type')),
+        soilType: String(values.get('type')).trim(),
         description: String(values.get('description')),
         ...(current ? { version: current.version } : {}),
       };
@@ -202,7 +209,7 @@ export function TechnicalDetails({
       method = 'POST';
       body = {
         technicalVersion: data.hole.technicalVersion,
-        note: String(values.get('note')),
+        note: String(values.get('note')).trim(),
         ...(reviewAction === 'aprovar'
           ? {
               reviewerName: String(values.get('name')),
@@ -448,6 +455,8 @@ export function TechnicalDetails({
                       id="soil-type"
                       name="type"
                       required
+                      pattern=".*\S.*"
+                      title="Informe o tipo de solo."
                       maxLength={120}
                       defaultValue={layer?.soilType ?? ''}
                       placeholder="Ex.: areia siltosa"
@@ -516,13 +525,11 @@ export function TechnicalDetails({
               boreholeId={hole.id}
               profile={profile}
               onError={onError}
-              onTechnicalChange={() => {
-                setData(null);
-                setRevision((v) => v + 1);
-              }}
+              refreshKey={revision}
+              onTechnicalChange={() => setRevision((v) => v + 1)}
             />
           </div>
-          {hasRole(profile, 'ENGINEER', 'VIEWER') ? (
+          {hasRole(profile, 'ENGINEER') ? (
             <section hidden={mode !== 'review'} aria-labelledby="review-title">
               <h3 id="review-title">Revisão técnica</h3>
               <p>
@@ -587,9 +594,24 @@ export function TechnicalDetails({
                       </>
                     ) : null}
                     <label htmlFor="review-note">Parecer ou observações da revisão</label>
-                    <textarea id="review-note" name="note" maxLength={2000} rows={3} required />
+                    <textarea
+                      id="review-note"
+                      name="note"
+                      maxLength={2000}
+                      rows={3}
+                      required
+                      onInput={requireNoteText}
+                    />
                     <div className="form-actions">
-                      <Button icon={Trash2}>
+                      <Button
+                        icon={
+                          reviewAction === 'aprovar'
+                            ? CheckCheck
+                            : reviewAction === 'devolver'
+                              ? Undo2
+                              : ClipboardCheck
+                        }
+                      >
                         {reviewAction === 'aprovar'
                           ? 'Confirmar aprovação'
                           : reviewAction === 'devolver'

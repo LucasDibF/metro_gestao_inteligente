@@ -1,6 +1,7 @@
 import { Button } from '../ui/Button';
 import { ArrowLeft, Check } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { ChangePassword } from './ChangePassword';
 import { auth, type Enrollment, type Profile } from './client';
 
 export function Security({
@@ -101,87 +102,91 @@ export function Security({
       </section>
     );
   return (
-    <section className="panel" aria-labelledby="security-title">
-      <div className="section-heading">
-        <h2 id="security-title">Segurança da conta</h2>
-        <span className="status">{profile.mfaEnabled ? 'MFA ativado' : 'MFA desativado'}</span>
-      </div>
-      <p>
-        {profile.mfaEnabled
-          ? 'Para desativar a autenticação em duas etapas, confirme sua senha e um código válido. Todas as suas sessões serão encerradas.'
-          : 'Adicione uma confirmação pelo aplicativo autenticador para proteger sua conta.'}
-      </p>
-      {enrollment ? (
-        <div className="setup">
-          <h3>Adicione ao seu autenticador</h3>
-          <p>
-            No aplicativo, cadastre uma chave manualmente: TOTP, 6 dígitos, período de 30 segundos.
-          </p>
-          <label htmlFor="secret">Chave de configuração</label>
-          <input
-            id="secret"
-            value={enrollment.secret}
-            readOnly
-            onFocus={(event) => event.currentTarget.select()}
-          />
-          <p className="help">
-            Esta configuração expira em cinco minutos. Depois, informe o código gerado pelo
-            aplicativo.
-          </p>
-          <Button
-            type="button"
-            className="secondary"
-            onClick={() => {
-              setEnrollment(null);
-              setError('');
-            }}
-          >
-            Reiniciar configuração
-          </Button>
+    <>
+      <section className="panel" aria-labelledby="security-title">
+        <div className="section-heading">
+          <h2 id="security-title">Segurança da conta</h2>
+          <span className="status">{profile.mfaEnabled ? 'MFA ativado' : 'MFA desativado'}</span>
         </div>
-      ) : null}
-      <form onSubmit={submit} aria-busy={busy}>
-        <fieldset disabled={busy}>
-          <label htmlFor="confirm-password">Confirme sua senha</label>
-          <input
-            id="confirm-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-          />
-          {enrollment || profile.mfaEnabled ? (
-            <>
-              <label htmlFor="confirm-code">
-                {profile.mfaEnabled
-                  ? 'Código do autenticador ou de recuperação'
-                  : 'Código do autenticador'}
-              </label>
-              <input
-                id="confirm-code"
-                name="code"
-                autoComplete="one-time-code"
-                required
-                maxLength={32}
-              />
-            </>
-          ) : null}
-          {error ? (
-            <p className="error" role="alert">
-              {error}
+        <p>
+          {profile.mfaEnabled
+            ? 'Para desativar a autenticação em duas etapas, confirme sua senha e um código válido. Todas as suas sessões serão encerradas.'
+            : 'Adicione uma confirmação pelo aplicativo autenticador para proteger sua conta.'}
+        </p>
+        {enrollment ? (
+          <div className="setup">
+            <h3>Adicione ao seu autenticador</h3>
+            <p>
+              No aplicativo, cadastre uma chave manualmente: TOTP, 6 dígitos, período de 30
+              segundos.
             </p>
-          ) : null}
-          <Button icon={Check} type="submit" className={profile.mfaEnabled ? 'danger' : ''}>
-            {busy
-              ? 'Aguarde…'
-              : profile.mfaEnabled
-                ? 'Desativar MFA e sair'
-                : enrollment
-                  ? 'Confirmar e ativar MFA'
-                  : 'Configurar autenticação em duas etapas'}
-          </Button>
-        </fieldset>
-      </form>
-    </section>
+            <label htmlFor="secret">Chave de configuração</label>
+            <input
+              id="secret"
+              value={enrollment.secret}
+              readOnly
+              onFocus={(event) => event.currentTarget.select()}
+            />
+            <p className="help">
+              Esta configuração expira em cinco minutos. Depois, informe o código gerado pelo
+              aplicativo.
+            </p>
+            <Button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setEnrollment(null);
+                setError('');
+              }}
+            >
+              Reiniciar configuração
+            </Button>
+          </div>
+        ) : null}
+        <form onSubmit={submit} aria-busy={busy}>
+          <fieldset disabled={busy}>
+            <label htmlFor="confirm-password">Confirme sua senha</label>
+            <input
+              id="confirm-password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+            />
+            {enrollment || profile.mfaEnabled ? (
+              <>
+                <label htmlFor="confirm-code">
+                  {profile.mfaEnabled
+                    ? 'Código do autenticador ou de recuperação'
+                    : 'Código do autenticador'}
+                </label>
+                <input
+                  id="confirm-code"
+                  name="code"
+                  autoComplete="one-time-code"
+                  required
+                  maxLength={32}
+                />
+              </>
+            ) : null}
+            {error ? (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <Button icon={Check} type="submit" className={profile.mfaEnabled ? 'danger' : ''}>
+              {busy
+                ? 'Aguarde…'
+                : profile.mfaEnabled
+                  ? 'Desativar MFA e sair'
+                  : enrollment
+                    ? 'Confirmar e ativar MFA'
+                    : 'Configurar autenticação em duas etapas'}
+            </Button>
+          </fieldset>
+        </form>
+      </section>
+      <ChangePassword onError={onError} />
+    </>
   );
 }

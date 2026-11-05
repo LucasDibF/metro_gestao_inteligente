@@ -55,7 +55,6 @@ test('native analysis synchronizes curves, layers, water and partial termination
           },
           fieldDetails: {
             executionMethod: index < 3 ? 'SP_TH' : 'SP_CA',
-            sampleRecovery: 'PARCIAL',
           },
           engineVersion: '0.1.0',
           createdBy: user.id,

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { MapPreview } from './MapPreview';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { auth, type Profile } from '../auth/client';
+import { auth, longRequestSignal, type Profile } from '../auth/client';
 interface Hole {
   id: string;
   code: string;
@@ -53,11 +53,13 @@ export function Reports({
   profile,
   onBack,
   onError,
+  onEditingChange,
 }: {
   work: { id: string; name: string };
   profile: Profile;
   onBack: () => void;
   onError: (e: unknown) => void;
+  onEditingChange?: (editing: boolean) => void;
 }) {
   const [reports, setReports] = useState<Report[] | null>(null),
     [options, setOptions] = useState<Hole[]>([]),
@@ -75,6 +77,10 @@ export function Reports({
     issueKey = useRef<{ reportId: string; version: number; key: string } | null>(null),
     base = `/obras/${work.id}/relatorios`,
     canWrite = hasRole(profile, 'ENGINEER');
+  useEffect(() => {
+    onEditingChange?.(Boolean(editor));
+    return () => onEditingChange?.(false);
+  }, [editor, onEditingChange]);
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -241,7 +247,7 @@ export function Reports({
     try {
       const blob = await auth.request<Blob>(
           base + '/' + reportId + '/emissoes/' + issue.id + '/pdf',
-          {},
+          { signal: longRequestSignal() },
           (r) => r.blob(),
         ),
         url = URL.createObjectURL(blob),

@@ -1,3 +1,4 @@
+import { FieldAssignment } from './FieldAssignment';
 import { hasRole } from '../auth/permissions';
 import { FolderTree } from './FolderTree';
 import { Breadcrumb } from '../ui/Breadcrumb';
@@ -42,11 +43,13 @@ export function WorkHierarchy({
   profile,
   onBack,
   onError,
+  onEditingChange,
 }: {
   work: { id: string; name: string };
   profile: Profile;
   onBack: () => void;
   onError: (error: unknown) => void;
+  onEditingChange?: (editing: boolean) => void;
 }) {
   const [editingSpt, setEditingSpt] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
@@ -66,6 +69,10 @@ export function WorkHierarchy({
   const [folderEdit, setFolderEdit] = useState<Folder | 'new' | null>(null);
   const [holeEdit, setHoleEdit] = useState<Borehole | 'new' | null>(null);
   const canWrite = hasRole(profile, 'ENGINEER');
+  useEffect(() => {
+    onEditingChange?.(editingSpt || Boolean(folderEdit) || Boolean(holeEdit));
+    return () => onEditingChange?.(false);
+  }, [editingSpt, folderEdit, holeEdit, onEditingChange]);
   const base = `/obras/${work.id}`;
   function failed(error: unknown) {
     setError(error instanceof Error ? error.message : 'Não foi possível concluir.');
@@ -203,6 +210,7 @@ export function WorkHierarchy({
           work={work}
           profile={profile}
           onError={onError}
+          onEditingChange={setEditingSpt}
           onBack={() => {
             setReportsOpen(false);
             setRevision((v) => v + 1);
@@ -270,14 +278,19 @@ export function WorkHierarchy({
         </Button>
       ) : null}
       <h2 id="hierarchy-title">{work.name}</h2>
-      <Button
-        icon={FileText}
-        className="secondary"
-        disabled={busy || Boolean(holeEdit) || Boolean(folderEdit)}
-        onClick={() => setReportsOpen(true)}
-      >
-        Relatórios da obra
-      </Button>
+      {hasRole(profile, 'ADMIN', 'COMMERCIAL') ? (
+        <FieldAssignment workId={work.id} onError={onError} />
+      ) : null}
+      {hasRole(profile, 'ENGINEER', 'COMMERCIAL', 'ADMIN', 'VIEWER') ? (
+        <Button
+          icon={FileText}
+          className="secondary"
+          disabled={busy || Boolean(holeEdit) || Boolean(folderEdit)}
+          onClick={() => setReportsOpen(true)}
+        >
+          Relatórios da obra
+        </Button>
+      ) : null}
       <p>
         {selectedFolder
           ? `Pasta: ${selectedFolder.name}`

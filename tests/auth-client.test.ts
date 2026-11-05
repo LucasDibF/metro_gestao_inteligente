@@ -164,3 +164,78 @@ test('test access availability never creates a session; explicit entry can repea
   assert.equal(await client.developmentLogin(), true);
   assert.equal(sessions, 2);
 });
+
+const signedIn = (respond: (url: string) => Response | Promise<Response>) =>
+  new AuthClient(async (url) =>
+    String(url).endsWith('/login')
+      ? json({ accessToken: 'token', refreshToken: 'refresh' })
+      : respond(String(url)),
+  );
+
+test('wrong current password keeps the session and does not attempt a token renewal', async () => {
+  let renewals = 0;
+  const client = signedIn((url) => {
+    if (url.endsWith('/refresh')) renewals++;
+    return json({ code: 'PASSWORD_INVALID' }, 401);
+  });
+  await client.login(credentials);
+  await assert.rejects(
+    client.request('/auth/password', { method: 'POST', body: '{}' }),
+    (error) =>
+      error instanceof ApiError &&
+      error.code === 'PASSWORD_INVALID' &&
+      error.message === 'A senha atual não confere. Sua sessão continua ativa.',
+  );
+  assert.equal(renewals, 0);
+  assert.equal(client.hasSession, true);
+});
+
+test('successful password change keeps the current session', async () => {
+  const client = signedIn(() => new Response(null, { status: 204 }));
+  await client.login(credentials);
+  assert.equal(await client.request('/auth/password', { method: 'POST', body: '{}' }), undefined);
+  assert.equal(client.hasSession, true);
+});
+
+test('too large uploads explain the limit', async () => {
+  const client = signedIn(() => json({}, 413));
+  await client.login(credentials);
+  await assert.rejects(
+    client.request('/upload', { method: 'POST' }),
+    (error) => error instanceof ApiError && error.message.includes('8 MB'),
+  );
+});
+
+test('timeouts become a Portuguese message while connecting and while reading the body', async () => {
+  const timeout = new DOMException('The operation timed out.', 'TimeoutError');
+  const expected = (error: unknown) =>
+    error instanceof ApiError && error.status === 0 && error.message.includes('demorou demais');
+  const connecting = signedIn(() => Promise.reject(timeout));
+  await connecting.login(credentials);
+  await assert.rejects(connecting.request('/pdf'), expected);
+
+  const stalled = () =>
+    new Response(
+      new ReadableStream({
+        pull(controller) {
+          controller.error(timeout);
+        },
+      }),
+    );
+  const reading = signedIn(stalled);
+  await reading.login(credentials);
+  await assert.rejects(
+    reading.request<Blob>('/pdf', {}, (response) => response.blob()),
+    expected,
+  );
+  await assert.rejects(reading.request('/json'), expected);
+});
+
+test('network failures keep the connection message', async () => {
+  const client = signedIn(() => Promise.reject(new TypeError('Failed to fetch')));
+  await client.login(credentials);
+  await assert.rejects(
+    client.request('/pdf'),
+    (error) => error instanceof ApiError && error.message.startsWith('Não foi possível conectar'),
+  );
+});

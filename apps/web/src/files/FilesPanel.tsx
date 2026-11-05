@@ -4,7 +4,7 @@ import { LoadingState } from '../ui/LoadingState';
 import { Button } from '../ui/Button';
 import { RefreshCw, Pencil, Plus, Save, X, Upload, Image, Check, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { auth, type Profile } from '../auth/client';
+import { auth, longRequestSignal, type Profile } from '../auth/client';
 interface Coordinate {
   id: string;
   kind: 'PLANNED' | 'EXECUTED';
@@ -41,6 +41,7 @@ interface Data {
   coordinates: Coordinate[];
   photos: Photo[];
 }
+const maxPhotoBytes = 8 * 1024 * 1024;
 export function FilesPanel({
   workId,
   boreholeId,
@@ -48,6 +49,7 @@ export function FilesPanel({
   onError,
   reviewState,
   onTechnicalChange,
+  refreshKey,
   mode = 'all',
   onEditingChange,
 }: {
@@ -59,6 +61,7 @@ export function FilesPanel({
   reviewState?: string;
   onError: (e: unknown) => void;
   onTechnicalChange: () => void;
+  refreshKey?: number;
 }) {
   const [data, setData] = useState<Data | null>(null),
     [revision, setRevision] = useState(0),
@@ -93,7 +96,7 @@ export function FilesPanel({
     return () => {
       active = false;
     };
-  }, [base, revision, onError]);
+  }, [base, revision, refreshKey, onError]);
   useEffect(
     () => () => {
       if (preview) URL.revokeObjectURL(preview.url);
@@ -151,7 +154,21 @@ export function FilesPanel({
   function photo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
-    void perform(() => auth.request(base + '/fotografias', { method: 'POST', body: values }), true);
+    const file = values.get('file');
+    if (file instanceof File && file.size > maxPhotoBytes) {
+      setMessage('');
+      setError('A fotografia ultrapassa 8 MB. Escolha um arquivo menor.');
+      return;
+    }
+    void perform(
+      () =>
+        auth.request(base + '/fotografias', {
+          method: 'POST',
+          body: values,
+          signal: longRequestSignal(),
+        }),
+      true,
+    );
   }
   function savePhoto(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

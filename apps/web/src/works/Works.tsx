@@ -37,9 +37,11 @@ const states =
 export function Works({
   profile,
   onError,
+  onEditingChange,
 }: {
   profile: Profile;
   onError: (error: unknown) => void;
+  onEditingChange?: (editing: boolean) => void;
 }) {
   const [opened, setOpened] = useState<Work | null>(null);
   const [data, setData] = useState<WorkList | null>(null);
@@ -57,6 +59,11 @@ export function Works({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const canWrite = hasRole(profile, 'ENGINEER', 'COMMERCIAL');
+  useEffect(() => {
+    if (opened) return; // WorkHierarchy reports its own editing state while it is open.
+    onEditingChange?.(canWrite && Boolean(editing));
+    return () => onEditingChange?.(false);
+  }, [opened, canWrite, editing, onEditingChange]);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -159,6 +166,7 @@ export function Works({
           setRevision((v) => v + 1);
         }}
         onError={onError}
+        onEditingChange={onEditingChange}
       />
     );
   return (

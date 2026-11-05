@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Pencil, Camera, X } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { auth } from '../../auth/client';
-import { methods, recoveries } from '../MetreDetails';
+import { methods } from '../MetreDetails';
 import {
   number,
   resultLabels,
@@ -200,8 +200,6 @@ export function SheetInspector({
           <dl className="sheet-facts">
             <dt>Método</dt>
             <dd>{methods[test.fieldDetails?.executionMethod ?? ''] ?? 'Não informado'}</dd>
-            <dt>Recuperação</dt>
-            <dd>{recoveries[test.fieldDetails?.sampleRecovery ?? ''] ?? 'Não informada'}</dd>
             <dt>Versão do registro</dt>
             <dd>{test.version}</dd>
           </dl>

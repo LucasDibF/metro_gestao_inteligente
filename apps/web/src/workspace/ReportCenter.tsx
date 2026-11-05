@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { auth } from '../auth/client';
+import { auth, longRequestSignal } from '../auth/client';
 import { Button } from '../ui/Button';
 import { LoadingState } from '../ui/LoadingState';
 import { Search, Download, FolderOpen, ArrowLeft, ArrowRight } from 'lucide-react';
@@ -68,7 +68,7 @@ export function ReportCenter({
     try {
       const blob = await auth.request<Blob>(
         `/obras/${entry.workId}/relatorios/${entry.id}/emissoes/${entry.issueId}/pdf`,
-        {},
+        { signal: longRequestSignal() },
         (r) => r.blob(),
       );
       const url = URL.createObjectURL(blob),

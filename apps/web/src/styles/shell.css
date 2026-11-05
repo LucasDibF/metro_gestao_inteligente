@@ -1,0 +1,246 @@
+/* Shared application shell, adapted from sondagem's Estratos interface. */
+h1,
+h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+h3,
+h4 {
+  font-weight: 600;
+}
+button,
+input,
+select,
+textarea {
+  border-radius: 8px;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+textarea::placeholder {
+  color: #71685e;
+}
+input,
+select,
+textarea {
+  caret-color: var(--brand);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+input[type='checkbox'] {
+  accent-color: var(--brand);
+}
+.setup input,
+.recovery-codes,
+.hash-value {
+  font-family: 'IBM Plex Mono', monospace;
+}
+.workspace {
+  min-height: 100dvh;
+  padding-left: 248px;
+}
+.workspace-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 248px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 26px 16px;
+  gap: 32px;
+  z-index: 10;
+}
+.workspace-sidebar > .wordmark {
+  padding-inline: 12px;
+  font-size: 23px;
+}
+.wordmark strong {
+  color: var(--brand);
+}
+.workspace-sidebar .account-nav {
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+.workspace-sidebar .account-nav button {
+  text-align: left;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  font-size: 14px;
+  padding: 10px 14px;
+}
+.workspace-sidebar .account-nav .secondary {
+  color: var(--muted);
+}
+.sidebar-context {
+  margin: auto 12px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.sidebar-context span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.workspace-header {
+  min-height: 72px;
+  padding: 12px 32px;
+  background: var(--surface);
+}
+.workspace-location {
+  font-weight: 500;
+  color: var(--muted);
+}
+.workspace > .account {
+  width: 100%;
+  max-width: 1280px;
+  padding: 32px;
+}
+.account-title {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.account-title h1 {
+  font-size: 30px;
+}
+.account-title p {
+  font-size: 14px;
+}
+.workspace > footer {
+  border-top: 1px solid var(--line);
+  margin-top: 32px;
+  padding: 20px 32px;
+  text-align: left;
+}
+.panel {
+  border-radius: 12px;
+  padding: 28px;
+}
+.work-list {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.work-list li {
+  padding: 20px 24px;
+}
+.work-list li:last-child {
+  border-bottom: 0;
+}
+.work-list .work-list {
+  border: 0;
+  border-radius: 0;
+}
+.work-link {
+  text-decoration: none;
+}
+.work-link:hover {
+  text-decoration: underline;
+}
+.empty {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 32px 24px;
+}
+.development-toolbar {
+  border-bottom: 1px solid var(--line);
+}
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: -100px;
+  z-index: 100;
+  padding: 12px;
+  background: var(--surface);
+}
+.skip-link:focus {
+  top: 12px;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #b8afa4 #f0ece6;
+}
+@media (max-width: 1000px) {
+  .workspace {
+    padding-left: 0;
+  }
+  .workspace-sidebar {
+    position: static;
+    width: 100%;
+    padding: 18px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    gap: 20px;
+  }
+  .workspace-sidebar > .wordmark {
+    padding: 0;
+  }
+  .workspace-sidebar .account-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .workspace-sidebar .account-nav button {
+    width: auto;
+  }
+  .sidebar-context {
+    display: none;
+  }
+  .workspace-header {
+    padding: 12px 24px;
+  }
+}
+@media (max-width: 760px) {
+  .workspace > .account {
+    padding: 24px 20px;
+  }
+  .workspace-sidebar {
+    padding: 18px 20px;
+  }
+  .workspace-header {
+    padding: 12px 20px;
+    gap: 12px;
+  }
+  .workspace-location {
+    font-size: 13px;
+  }
+  .account-title {
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .account-title h1 {
+    font-size: 28px;
+  }
+  .panel {
+    padding: 24px 20px;
+  }
+  .work-list li {
+    padding: 20px 16px;
+  }
+  .workspace > footer {
+    padding: 20px;
+  }
+}
+.navigation-lock {
+  max-width: none;
+  margin: 0;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--subtle);
+}

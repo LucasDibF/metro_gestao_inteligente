@@ -14,10 +14,12 @@ export function Notifications({
   onOpen,
   onError,
   disabled,
+  describedBy,
 }: {
   onOpen: (target: WorkTarget) => void;
   onError: (e: unknown) => void;
   disabled: boolean;
+  describedBy?: string;
 }) {
   const panel = useRef<HTMLDetailsElement>(null);
   const [items, setItems] = useState<Activity[]>([]),
@@ -52,6 +54,9 @@ export function Notifications({
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, []);
+  useEffect(() => {
+    if (disabled && panel.current) panel.current.open = false;
+  }, [disabled]);
   async function read(keys: string[]) {
     setBusy(true);
     setError('');
@@ -90,7 +95,14 @@ export function Notifications({
         }
       }}
     >
-      <summary aria-label={`Notificações${unread ? `, ${unread} não lidas` : ''}`}>
+      <summary
+        aria-label={`Notificações${unread ? `, ${unread} não lidas` : ''}`}
+        aria-disabled={disabled || undefined}
+        aria-describedby={describedBy}
+        onClick={(event) => {
+          if (disabled) event.preventDefault();
+        }}
+      >
         <Bell aria-hidden="true" />
         {unread ? (
           <span className="notification-count" aria-hidden="true">
@@ -136,10 +148,11 @@ export function Notifications({
                     className="activity-link"
                     disabled={disabled || busy}
                     onClick={async () => {
-                      if (await read([item.key])) {
-                        if (panel.current) panel.current.open = false;
-                        onOpen(item);
-                      }
+                      // A failed read mark must not block the record; only a lost session does.
+                      await read([item.key]);
+                      if (!auth.hasSession) return;
+                      if (panel.current) panel.current.open = false;
+                      onOpen(item);
                     }}
                   >
                     <span>
