@@ -5,6 +5,7 @@ datasource db {
   provider = "postgresql"
 }
 model Tenant {
+  profile Json?
   notificationReads NotificationRead[]
   id String @id @default(uuid()) @db.Uuid
   name String @db.VarChar(200)
@@ -25,6 +26,7 @@ enum MembershipRole {
 }
 
 model User {
+  assignedWorkAssignments WorkAssignment[] @relation("WorkAssignedBy")
   notificationReads NotificationRead[]
   id String @id @default(uuid()) @db.Uuid
   email String @unique @db.VarChar(254)
@@ -38,6 +40,7 @@ model User {
 }
 
 model Membership {
+  fieldAssignments WorkAssignment[]
   tenantId String @map("tenant_id") @db.Uuid
   userId String @map("user_id") @db.Uuid
   role MembershipRole
@@ -81,6 +84,7 @@ model MfaCredential {
 }
 
 model Work {
+  fieldAssignment WorkAssignment?
   id String @id @default(uuid()) @db.Uuid
   tenantId String @map("tenant_id") @db.Uuid
   name String @db.VarChar(200)
@@ -281,6 +285,7 @@ model Report {
  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
  issues ReportIssue[]
  @@unique([id,workId,tenantId])
+ @@index([tenantId,workId,createdAt(sort:Desc),id(sort:Desc)],map:"reports_tenant_work_created_idx")
  @@map("reports")
 }
 model ReportIssue {
@@ -339,4 +344,20 @@ model Client {
  @@unique([id,tenantId])
  @@index([tenantId,name,id])
  @@map("clients")
+}
+
+model WorkAssignment {
+ workId String @id @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ operatorId String @map("operator_id") @db.Uuid
+ assignedBy String @map("assigned_by") @db.Uuid
+ assignedByUser User @relation("WorkAssignedBy",fields:[assignedBy],references:[id],onDelete:Restrict)
+ active Boolean @default(true)
+ version Int @default(1)
+ updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
+ work Work @relation(fields:[workId,tenantId],references:[id,tenantId],onDelete:Restrict)
+ operator Membership @relation(fields:[tenantId,operatorId],references:[tenantId,userId],onDelete:Restrict)
+ @@unique([workId,tenantId])
+ @@index([tenantId,operatorId,active],map:"work_assignments_operator_idx")
+ @@map("work_assignments")
 }
