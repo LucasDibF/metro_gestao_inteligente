@@ -10,3 +10,6 @@ coverage
 test-results
 playwright-report
 work
+apps/mobile
+graphify-out
+load-test-results

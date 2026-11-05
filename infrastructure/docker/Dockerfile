@@ -30,4 +30,6 @@ CMD ["node","apps/worker/dist/main.js"]
 FROM nginx:stable-alpine AS web
 COPY infrastructure/docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+RUN chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx/conf.d && touch /var/run/nginx.pid && chown nginx:nginx /var/run/nginx.pid
+USER nginx
 EXPOSE 8080
