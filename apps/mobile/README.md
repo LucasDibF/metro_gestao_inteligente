@@ -64,7 +64,7 @@ A API registra o recibo de uma operação junto com a alteração na mesma trans
 
 Uma recusa definitiva da API (400 ou 422) não trava a fila: a operação fica marcada como recusada, o motivo aparece na seção correspondente e as demais seguem. Salvar de novo o mesmo item substitui a recusa na mesma transação; fotografia recusada, ou cujo arquivo sumiu, pode ser removida. Um envio para análise recusado sai da fila, e com um envio pendente o furo não aceita edição. Rascunhos de metro sobrevivem ao download e podem ser descartados no editor. O caminho das fotografias é gravado relativo à pasta do aplicativo, porque a absoluta muda em atualizações do iOS. Ao abrir um furo baixado, sem pendências e online, o aplicativo atualiza a cópia em segundo plano.
 
-A sessão só termina com 401 ou sessão salva ilegível. 403 é erro local com a mensagem da API; 5xx e 429 na abertura usam o modo offline. Build de release sem `API_BASE_URL` em HTTPS abre uma tela explicando a configuração.
+A sessão só termina com 401 ou sessão salva ilegível. 403 é erro local com a mensagem da API. 5xx e 429, na renovação da sessão ou na leitura da lista de obras e do catálogo da obra, usam a cópia salva no aparelho, desde que o período offline não tenha terminado; 401, 403 e 404 nunca abrem a cópia salva. A classificação fica em `allowsOfflineRead`, em `lib/core/api_client.dart`. Build de release sem `API_BASE_URL` em HTTPS abre uma tela explicando a configuração.
 
 Uma alteração feita no web interrompe a sincronização e preserva o conteúdo local. O botão **Compartilhar cópia de campo** exporta JSON e fotografias locais para conferência assistida, sem tokens ou senhas; não aprova dados nem importa alterações automaticamente. Não há opção de forçar uma sobrescrita sobre o trabalho do engenheiro. Ao sair com pendências, o aplicativo avisa que os registros continuam vinculados à mesma conta no aparelho.
 
@@ -107,7 +107,7 @@ Testes Flutter usam SQLite real para reinício, isolamento, fila, conflitos e re
 
 ## Verificação e limites de liberação
 
-Análise Flutter sem problemas e 229 testes Flutter aprovados. Os dois testes HTTP de atribuição/sincronização e o teste nativo no simulador iPhone 18 Pro/iOS 27.0 são de uma verificação anterior às correções de fila, sessão e fotografias; o detalhe por situação está em `docs/mobile-flutter-mvp.md`.
+Análise Flutter sem problemas, 246 testes Flutter aprovados e dois testes HTTP de atribuição/sincronização aprovados. O teste nativo passou nos simuladores iPhone 18 Pro (`field_flow_test.dart` e `photo_delivery_test.dart`) e iPad mini (`field_flow_test.dart`), ambos com iOS 27.0; o detalhe por situação está em `docs/mobile-flutter-mvp.md`.
 
 O simulador permite conferir navegação, formulários e galeria. A câmera física, falta de armazenamento, suspensão do aplicativo durante captura, modo avião prolongado e comportamento em aparelhos Android e iPhone ainda exigem homologação em dispositivos reais. O Android instalado possui licenças de SDK pendentes; elas não foram aceitas automaticamente. O aplicativo está em validação local e ainda não foi distribuído para trabalho de campo.
 

@@ -32,7 +32,7 @@ class HoleStatusStrip extends StatelessWidget {
     final status = Row(
       spacing: MetroSpace.sm,
       children: [
-        Icon(icon, size: 22, color: MetroColors.ink),
+        Icon(icon, size: MetroIconSize.inline, color: MetroColors.ink),
         Expanded(
           child: Text(label, style: Theme.of(context).textTheme.titleSmall),
         ),

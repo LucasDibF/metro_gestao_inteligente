@@ -97,7 +97,7 @@ class _SectionItem extends StatelessWidget {
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            spacing: 2,
+            spacing: MetroSpace.xxs,
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
@@ -109,16 +109,15 @@ class _SectionItem extends StatelessWidget {
                   color: selected ? MetroColors.selection : Colors.transparent,
                   borderRadius: BorderRadius.circular(MetroRadius.control),
                 ),
-                child: Icon(icon, size: 24, color: color),
+                child: Icon(icon, size: MetroIconSize.navigation, color: color),
               ),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
                   label,
                   maxLines: 1,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: color,
-                    fontSize: 13,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   ),
                 ),

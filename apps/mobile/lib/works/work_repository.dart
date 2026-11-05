@@ -83,8 +83,8 @@ class WorkRepository {
       }
       await cache.write(owner, works);
       return WorkList(works.map(AssignedWork.fromJson).toList(), cached: false);
-    } on NetworkFailure {
-      if (!session.offlineReadAllowed) rethrow;
+    } on Exception catch (failure) {
+      if (!allowsOfflineRead(failure) || !session.offlineReadAllowed) rethrow;
       final works = await cache.read(owner);
       if (works == null) rethrow;
       return WorkList(works.map(AssignedWork.fromJson).toList(), cached: true);

@@ -262,7 +262,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Baixar obra para usar offline'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('1 furos disponíveis'), findsOneWidget);
+      expect(
+        find.textContaining('1 furo disponível no aparelho.'),
+        findsOneWidget,
+      );
       expect(find.textContaining('Não baixados: SP-02'), findsOneWidget);
       expect(await memory.read(contents.profile!.cacheKey, 'one'), isNotNull);
       await tester.pumpWidget(const SizedBox());

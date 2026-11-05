@@ -19,6 +19,7 @@ async function main() {
     ...development,
     ...existing,
     NODE_ENV: 'test',
+    PORT: '4000',
     DEV_AUTH_BYPASS: 'false',
     S3_BUCKET: 'spt-test-private',
   };

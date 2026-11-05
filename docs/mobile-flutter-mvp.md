@@ -48,16 +48,26 @@ Detalhes de execução, componentes e limitações em `apps/mobile/README.md`. A
 
 ## Teste nativo e layout em 05/11/2026
 
-Simulador iPhone 18 Pro/iOS 27.0, API e processamento de fotos em `spt_test`, furo sintético novo a cada execução:
+Última verificação sobre o código do commit `a25c4bc`, com as correções de fila, sessão e fotografias. API e processamento de fotos em `spt_test`, furo sintético novo a cada execução:
 
-- `integration_test/field_flow_test.dart`: aprovado. Login, obra, furo, solo inicial, metro com golpes, dados de campo, sincronização real e conferência.
-- `integration_test/photo_delivery_test.dart`: aprovado. Fotografia enviada, processada pelo worker e exibida; envio para análise bloqueia a edição.
-- `flutter analyze`: sem problemas. 154 testes Flutter aprovados, sendo 126 de matriz de telas (sete tamanhos, texto a 100% e 200%, teclado aberto e áreas seguras).
+- iPhone 18 Pro/iOS 27.0, `integration_test/field_flow_test.dart`: aprovado. Login, obra, furo, solo inicial, metro com golpes, dados de campo, sincronização real e conferência.
+- iPhone 18 Pro/iOS 27.0, `integration_test/photo_delivery_test.dart`: aprovado. Fotografia enviada, processada pelo worker e exibida; envio para análise bloqueia a edição.
+- iPad mini/iOS 27.0, `field_flow_test.dart`: aprovado, com o trilho lateral de seções. O `+2` do log conta o caso do fluxo e o `tearDownAll` do binding de integração, como nos logs do iPhone; `photo_delivery_test.dart` não foi executado no iPad.
+- `flutter analyze`: sem problemas. 246 testes Flutter aprovados, sendo 126 de matriz de telas (sete tamanhos, texto a 100% e 200%, teclado aberto e áreas seguras).
 - `tests/integration/mobile-sync.test.ts` e `field-assignments.test.ts`: aprovados em `spt_test`.
+- Android: `flutter build apk --debug` compila. O aplicativo não foi instalado nem executado em emulador ou aparelho, e as licenças de SDK seguem pendentes.
 
 A compilação nativa deve ser feita em cópia fora de `Documents`: nessa pasta os atributos estendidos do macOS fazem a assinatura de `Flutter.framework` falhar ("resource fork, Finder information, or similar detritus not allowed").
 
 Correções encontradas ao comparar documento e código: catálogo offline com pastas falhava ao abrir (lista JSON convertida com tipo incorreto); um campo obrigatório fora da área visível do formulário não era validado, porque a lista só mantinha os campos visíveis; o novo metro continuava disponível depois do encerramento do furo, contrariando o aviso exibido.
+
+Correções da auditoria de qualidade, sem novo teste nativo:
+
+- O teste do campo obrigatório só cobria a janela estreita a 200%, em que o botão entra na rolagem. O novo teste toca o botão fixo sem rolar, em telefone e tablet a 100% e 200% (`test/responsive_structure_test.dart`). Com o formulário trocado por uma lista preguiçosa, ele falha em seis das oito combinações; com o código atual, passa.
+- Com sessão válida, 5xx e 429 na lista de obras e no catálogo da obra mostravam erro mesmo com cópia salva. Agora usam a cópia dentro do período offline; 401 continua encerrando a sessão e 403 e 404 continuam como erro de acesso (`test/offline_read_failures_test.dart`).
+- O aviso de download dizia "1 furos disponíveis". A contagem agora concorda com o número (`test/work_contents_test.dart` e `test/field_consistency_test.dart`).
+
+As migrações `202611050001_flow_and_access_corrections` e `202611050002_change_own_password` foram aplicadas a `spt_test` por `psql`, com registro em `_prisma_migrations`, porque `prisma migrate deploy` travou sem mensagem nesta máquina. O motivo do travamento não foi identificado.
 
 Testes de aceite por situação:
 

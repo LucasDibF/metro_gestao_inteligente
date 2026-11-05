@@ -20,6 +20,12 @@ class NetworkFailure implements Exception {
   const NetworkFailure();
 }
 
+/// A read may open the copy saved on the device only when the server could
+/// not answer: no connection, 5xx or 429. A 401, 403 or 404 is an answer
+/// about access and never turns into offline access.
+bool allowsOfflineRead(Object failure) =>
+    failure is NetworkFailure || (failure is ApiFailure && failure.transient);
+
 class ApiClient {
   ApiClient({required this.baseUri, http.Client? transport})
     : _transport = transport ?? http.Client() {

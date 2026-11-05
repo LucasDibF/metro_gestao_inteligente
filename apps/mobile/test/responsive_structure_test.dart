@@ -111,6 +111,47 @@ void main() {
       expect(find.text('Informe o tipo de solo'), findsOneWidget);
     });
 
+    // Without scrolling, the docked action must still validate the fields
+    // below the fold; a lazy list would never build them.
+    testWidgets('ação fixa valida campo obrigatório sem rolar', (tester) async {
+      final failures = <String>[];
+      for (final viewport in viewports.sublist(1, 5)) {
+        for (final scale in textScales) {
+          final name = '${viewport.name} a ${(scale * 100).round()}%';
+          applyViewport(tester, viewport, textScale: scale);
+          var saved = false;
+          // A new app per window: a wrong save pops the editor's only route.
+          await tester.pumpWidget(
+            KeyedSubtree(
+              key: ValueKey(name),
+              child: screenApp(
+                MetreEditor(
+                  depth: 2,
+                  record: const {
+                    'advances': [
+                      {'blows': 3, 'penetrationMm': 150},
+                      {'blows': 3, 'penetrationMm': 150},
+                      {'blows': 3, 'penetrationMm': 150},
+                    ],
+                  },
+                  onSave: (_) async => saved = true,
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final action = find.text('Salvar metro no aparelho').hitTestable();
+          expect(action, findsOneWidget, reason: 'ação fixa em $name');
+          await tester.tap(action);
+          await tester.pumpAndSettle();
+          if (saved || find.text('Informe o tipo de solo').evaluate().isEmpty) {
+            failures.add(name);
+          }
+        }
+      }
+      expect(failures, isEmpty, reason: 'salvou sem tipo de solo');
+    });
+
     testWidgets('três avanços lado a lado só quando cabem', (tester) async {
       Future<double> secondAdvanceTop(
         ScreenWindow viewport,

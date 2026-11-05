@@ -4,7 +4,9 @@ import '../core/api_client.dart';
 import '../ui/metro_layout.dart';
 import '../ui/metro_theme.dart';
 import '../ui/metro_widgets.dart';
+import 'work_catalog.dart';
 import 'work_repository.dart';
+import '../field/field_format.dart';
 import '../field/field_store.dart';
 import '../field/field_repository.dart';
 import '../field/hole_screen.dart';
@@ -28,10 +30,11 @@ class WorkContentsScreen extends StatefulWidget {
 }
 
 class _WorkContentsScreenState extends State<WorkContentsScreen> {
-  late Future<List<Map<String, dynamic>>> _contents;
+  late Future<WorkCatalog> _contents;
   late final FieldRepository _repository;
+  late final WorkCatalogRepository _catalog;
   late final FieldStore _fieldStore;
-  bool _cached = false, _downloading = false;
+  bool _downloading = false;
   String? _message;
 
   @override
@@ -39,53 +42,11 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
     super.initState();
     _fieldStore = widget.store ?? FieldStore.instance;
     _repository = FieldRepository.forAccount(widget.session, _fieldStore);
+    _catalog = WorkCatalogRepository(widget.session, _fieldStore);
     _contents = _load();
   }
 
-  Future<List<Map<String, dynamic>>> _pages(String resource) async {
-    final rows = <Map<String, dynamic>>[];
-    for (var page = 1; ; page++) {
-      final result = await widget.session.get(
-        'mobile/obras/${widget.work.id}/$resource?page=$page',
-      );
-      final items = (result['items'] as List).cast<Map<String, dynamic>>();
-      rows.addAll(items);
-      if (items.isEmpty || rows.length >= (result['total'] as int)) return rows;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _load() async {
-    try {
-      final folders = await _pages('pastas');
-      final holes = await _pages('furos');
-      final rows = <Json>[
-        for (final folder in folders)
-          {
-            ...folder,
-            'children': holes
-                .where((h) => h['folderId'] == folder['id'])
-                .toList(),
-          },
-        ...holes.where((h) => h['folderId'] == null),
-      ];
-      if (widget.session.profile != null) {
-        await _fieldStore.catalog(_repository.owner, widget.work.id, {
-          'rows': rows,
-        });
-      }
-      _cached = false;
-      return rows;
-    } on NetworkFailure {
-      if (!widget.session.offlineReadAllowed) rethrow;
-      final catalog = await _fieldStore.readCatalog(
-        _repository.owner,
-        widget.work.id,
-      );
-      if (catalog == null) rethrow;
-      _cached = true;
-      return (catalog['rows'] as List).cast<Json>();
-    }
-  }
+  Future<WorkCatalog> _load() => _catalog.load(widget.work.id);
 
   Future<void> _download() async {
     setState(() {
@@ -93,7 +54,7 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
       _message = null;
     });
     try {
-      final rows = await _contents;
+      final rows = (await _contents).rows;
       final holes = <Json>[
         for (final row in rows)
           if (row.containsKey('children'))
@@ -110,8 +71,8 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
       if (mounted) {
         setState(
           () => _message = skipped == 0
-              ? '${available.length} furos disponíveis no aparelho. Alterações pendentes foram preservadas.'
-              : '${available.length} furos disponíveis no aparelho. Não baixados: $names. Confira a conexão e tente novamente. Os furos já salvos foram preservados.',
+              ? '${holesOnDevice(available.length)} Alterações pendentes foram preservadas.'
+              : '${holesOnDevice(available.length)} Não baixados: $names. Confira a conexão e tente novamente. Os furos já salvos foram preservados.',
         );
       }
     } catch (e) {
@@ -193,7 +154,7 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
         row['name'] as String,
         style: Theme.of(context).textTheme.titleMedium,
       ),
-      subtitle: Text(holes.length == 1 ? '1 furo' : '${holes.length} furos'),
+      subtitle: Text(holeCount(holes.length)),
       children: [
         const Divider(),
         if (holes.isEmpty)
@@ -212,49 +173,54 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
     );
   }
 
-  Widget _contentsList(List<Json> rows) => MetroActionLayout(
-    maxWidth: MetroWidth.hierarchy,
-    onRefresh: _reload,
-    children: [
-      const MetroSectionTitle('Pastas e furos'),
-      const SizedBox(height: MetroSpace.md),
-      if (_cached) ...[
-        const MetroNotice(
-          'Sem conexão · Catálogo salvo neste aparelho',
-          icon: Icons.wifi_off,
-        ),
+  Widget _contentsList(WorkCatalog catalog) {
+    final rows = catalog.rows;
+    return MetroActionLayout(
+      maxWidth: MetroWidth.hierarchy,
+      onRefresh: _reload,
+      children: [
+        const MetroSectionTitle('Pastas e furos'),
         const SizedBox(height: MetroSpace.md),
-      ],
-      if (rows.isNotEmpty) ...[
-        OutlinedButton.icon(
-          onPressed: _downloading ? null : _download,
-          icon: const Icon(Icons.download_for_offline_outlined),
-          label: Text(
-            _downloading ? 'Baixando furos…' : 'Baixar obra para usar offline',
+        if (catalog.cached) ...[
+          const MetroNotice(
+            'Sem conexão · Catálogo salvo neste aparelho',
+            icon: Icons.wifi_off,
           ),
-        ),
-        const SizedBox(height: MetroSpace.md),
-      ],
-      if (_message != null) ...[
-        MetroNotice(_message!),
-        const SizedBox(height: MetroSpace.md),
-      ],
-      if (rows.isEmpty)
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: MetroSpace.xl),
-          child: Text(
-            'Esta obra ainda não possui furos. Peça ao responsável para cadastrar os furos no sistema web.',
+          const SizedBox(height: MetroSpace.md),
+        ],
+        if (rows.isNotEmpty) ...[
+          OutlinedButton.icon(
+            onPressed: _downloading ? null : _download,
+            icon: const Icon(Icons.download_for_offline_outlined),
+            label: Text(
+              _downloading
+                  ? 'Baixando furos…'
+                  : 'Baixar obra para usar offline',
+            ),
           ),
-        ),
-      for (final row in rows) ...[
-        const SizedBox(height: MetroSpace.xs),
-        MetroPanel(
-          child: row.containsKey('children') ? _folder(row) : _hole(row),
-        ),
-        const SizedBox(height: MetroSpace.xs),
+          const SizedBox(height: MetroSpace.md),
+        ],
+        if (_message != null) ...[
+          MetroNotice(_message!),
+          const SizedBox(height: MetroSpace.md),
+        ],
+        if (rows.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: MetroSpace.xl),
+            child: Text(
+              'Esta obra ainda não possui furos. Peça ao responsável para cadastrar os furos no sistema web.',
+            ),
+          ),
+        for (final row in rows) ...[
+          const SizedBox(height: MetroSpace.xs),
+          MetroPanel(
+            child: row.containsKey('children') ? _folder(row) : _hole(row),
+          ),
+          const SizedBox(height: MetroSpace.xs),
+        ],
       ],
-    ],
-  );
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -269,7 +235,7 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
         ),
       ],
     ),
-    body: FutureBuilder<List<Map<String, dynamic>>>(
+    body: FutureBuilder<WorkCatalog>(
       future: _contents,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {

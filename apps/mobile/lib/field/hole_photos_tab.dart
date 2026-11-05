@@ -28,7 +28,7 @@ class PhotoFrame extends StatelessWidget {
             const Center(
               child: Icon(
                 Icons.photo_outlined,
-                size: 40,
+                size: MetroIconSize.placeholder,
                 color: MetroColors.muted,
               ),
             ),

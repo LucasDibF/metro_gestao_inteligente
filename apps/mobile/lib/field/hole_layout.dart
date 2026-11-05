@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../ui/metro_theme.dart';
 import 'hole_section_nav.dart';
 
 /// Places the status header above the sections, and the sections' navigation
@@ -23,7 +24,7 @@ class HoleLayout extends StatelessWidget {
       children: [
         header(constraints),
         SizedBox(
-          height: 3,
+          height: MetroStroke.progress,
           child: busy ? const LinearProgressIndicator() : null,
         ),
         const Divider(),

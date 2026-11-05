@@ -19,6 +19,7 @@ abstract final class MetroColors {
 }
 
 abstract final class MetroSpace {
+  static const xxs = 2.0;
   static const xs = 4.0;
   static const sm = 8.0;
   static const md = 12.0;
@@ -38,6 +39,20 @@ abstract final class MetroTarget {
   static const primary = 56.0;
   static const secondary = 52.0;
   static const minimum = 48.0;
+}
+
+abstract final class MetroIconSize {
+  /// Beside a line of text, as in the hole status.
+  static const inline = 22.0;
+  static const navigation = 24.0;
+
+  /// Stands in for a photo that has not loaded.
+  static const placeholder = 40.0;
+}
+
+/// Thin bars drawn in reserved space, so showing them never moves content.
+abstract final class MetroStroke {
+  static const progress = 3.0;
 }
 
 const _tabularFigures = [FontFeature.tabularFigures()];

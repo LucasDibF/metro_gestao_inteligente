@@ -101,6 +101,8 @@ void main() {
         150,
         scrollable: find.byType(Scrollable).first,
       );
+      // A scroll still settling ignores pointers; wide windows need no drag.
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Mesmo tipo e cor do metro anterior'));
       await tester.scrollUntilVisible(
         find.text('Salvar metro no aparelho'),
