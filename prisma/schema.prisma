@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 datasource db {
   provider = "postgresql"
@@ -14,6 +15,7 @@ model Tenant {
   works Work[]
   sessions AuthSession[]
   memberships Membership[]
+  mobileOperations MobileOperation[]
   @@map("tenants")
 }
 
@@ -36,6 +38,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   sessions AuthSession[]
   memberships Membership[]
+  mobileOperations MobileOperation[]
   @@map("users")
 }
 
@@ -68,6 +71,7 @@ model AuthSession {
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   @@index([familyId])
+  @@index([familyId], map: "auth_sessions_active_family_idx", where: raw("revoked_at IS NULL AND rotated_at IS NULL"))
   @@index([userId])
   @@map("auth_sessions")
 }
@@ -157,6 +161,7 @@ model Borehole {
  officialCoordinateId String? @map("official_coordinate_id") @db.Uuid
  coordinates BoreholeCoordinate[] @relation("HoleCoordinates")
  photos BoreholePhoto[]
+ mobileOperations MobileOperation[]
  officialCoordinate BoreholeCoordinate? @relation("OfficialCoordinate",fields:[officialCoordinateId,id,workId,tenantId],references:[id,boreholeId,workId,tenantId],onDelete:Restrict)
  @@unique([id, workId, tenantId])
  @@map("boreholes")
@@ -268,6 +273,10 @@ model BoreholePhoto {
  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
  borehole Borehole @relation(fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:Restrict)
+ // Índices parciais de 202611050001_flow_and_access_corrections. O predicado da fila está na forma normalizada pelo PostgreSQL
+ // (pg_get_expr): escrito como IN ('PENDING','PROCESSING'), o migrate diff proporia DROP e CREATE do índice.
+ @@index([tenantId,workId,boreholeId,createdAt,id],map:"borehole_photos_active_scope_idx",where:raw("deleted_at IS NULL"))
+ @@index([createdAt,id],map:"borehole_photos_queue_idx",where:raw("((processing_state)::text = ANY ((ARRAY['PENDING'::character varying, 'PROCESSING'::character varying])::text[]))"))
  @@map("borehole_photos")
 }
 
@@ -360,4 +369,34 @@ model WorkAssignment {
  @@unique([workId,tenantId])
  @@index([tenantId,operatorId,active],map:"work_assignments_operator_idx")
  @@map("work_assignments")
+}
+
+// Criada em 202611020002_management e escrita só por funções SECURITY DEFINER (admin_member_*). RLS e políticas ficam na migração.
+model MembershipEvent {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ actorId String @map("actor_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ action String
+ details Json
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+ @@map("membership_events")
+}
+
+// Criada em 202611040002_mobile_sync. Recibos imutáveis: não remover enquanto aparelhos puderem repetir operações (apps/mobile/README.md).
+// A API usa só SQL bruto nesta tabela. RLS e políticas ficam na migração.
+model MobileOperation {
+ tenantId String @map("tenant_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ operationId String @map("operation_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ boreholeId String @map("borehole_id") @db.Uuid
+ requestHash String @map("request_hash")
+ response Json
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+ tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ user User @relation(fields:[userId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ borehole Borehole @relation(fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:NoAction,onUpdate:NoAction)
+ @@id([tenantId,userId,operationId])
+ @@map("mobile_operations")
 }
