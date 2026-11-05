@@ -126,7 +126,7 @@ Foram inspecionados o `documentation-agent` do workspace anterior e os agentes d
 
 ### Consulta opcional no Google Maps
 
-OpenFreeMap e Esri foram retirados do código, das dependências e das configurações de ambiente. A única chave de API de mapas é `GOOGLE_MAPS_API_KEY`, no `.env` da raiz. O INPE não usa chave. Não modifica as demais configurações de autenticação, banco ou armazenamento.
+OpenFreeMap foi retirado do código. As chaves de mapas no `.env` da raiz são `GOOGLE_MAPS_API_KEY` (consulta no navegador) e `ESRI_API_KEY` (imagem do croqui, descrita abaixo). O INPE não usa chave. Não modifica as demais configurações de autenticação, banco ou armazenamento.
 
 Para habilitar a consulta:
 
@@ -137,10 +137,20 @@ Para habilitar a consulta:
 
 A chave de navegador aparece na URL do iframe, como previsto pela Maps Embed API; proteja-a por API e sites autorizados. Não use nessa variável uma credencial de servidor com acesso irrestrito. O mapa é servido diretamente pelo Google, sem cópias, screenshots ou cache pelo sistema. Ele é uma referência de localização centrada no enquadramento UTM; os códigos e as marcações de todos os furos permanecem no croqui técnico separado. Mensagens de chave inválida ou restrição são exibidas pelo próprio Google no quadro. Coordenadas fictícias apontam para a localização correspondente.
 
-O PDF preserva furos, coordenadas, norte e escala; pode incluir o fundo INPE descrito abaixo. Não inclui imagens ou URLs do Google. A geração funciona mesmo sem a chave; as imagens Google não são permitidas em documentos gerados conforme a [FAQ oficial](https://developers.google.com/maps/faq#tos_staticmaps). Emissões antigas permanecem imutáveis. A chave real ainda é necessária para homologar a visualização externa; testes usam URL e quadro simulados sem consumir o serviço.
+O PDF preserva furos, coordenadas, norte e escala; inclui o fundo Esri ou, na falta dele, o INPE, descritos abaixo. Não inclui imagens ou URLs do Google. A geração funciona mesmo sem a chave; as imagens Google não são permitidas em documentos gerados conforme a [FAQ oficial](https://developers.google.com/maps/faq#tos_staticmaps). Emissões antigas permanecem imutáveis. A chave real ainda é necessária para homologar a visualização externa; testes usam URL e quadro simulados sem consumir o serviço.
 
 [Configuração do mapa incorporado](https://developers.google.com/maps/documentation/embed/embedding-map).
 
+
+### Imagem de satélite Esri no croqui (alta resolução)
+
+`ESRI_MAP_ENABLED=true` habilita a imagem Esri World Imagery na prévia e nas novas emissões. Em áreas urbanas brasileiras a resolução costuma ser de ~0,3 m por pixel (zoom 19), suficiente para identificar construções, telhados, piscinas e divisas de lote. É o fundo preferencial; quando a Esri não tem imagem para o local ou falha, o croqui usa o INPE (abaixo), e se nenhum estiver disponível mantém só os vetores.
+
+Por que Esri: Google Maps e Apple Maps proíbem guardar a imagem em documentos (Google: FAQ de Static Maps; Apple: Anexo 6, §2.5, do contrato do Apple Developer Program). A Esri permite mapas estáticos em relatórios impressos ou em PDF, com atribuição ([termos de mapas estáticos](https://doc.arcgis.com/en/arcgis-online/reference/static-maps.htm)). O PDF traz o crédito “Esri, Vantor, Earthstar Geographics e a comunidade de usuários GIS”.
+
+Em produção, crie uma chave na ArcGIS Location Platform com acesso apenas a basemaps e preencha `ESRI_API_KEY` (usada somente no servidor; nunca vai ao navegador). Sem chave, o sistema usa o endereço público de tiles, adequado só para desenvolvimento. Confira o limite gratuito mensal de tiles no plano da Esri.
+
+Funcionamento: escolhe o zoom pelo enquadramento (até 19; abrangências maiores usam zoom menor, no máximo 100 tiles), baixa os tiles com `blankTile=false` e, se faltar imagem naquele zoom, desce até três níveis. O mosaico é reprojetado de Web Mercator para o enquadramento UTM do croqui (1200×1040 px), com transformação exata em grade de controle de 20 px. Limites: 18 s de rede, 1 MiB por tile, 32 MiB por renderização, apenas `services.arcgisonline.com`/`ibasemaps-api.arcgis.com`, sem redirecionamentos. Somente coordenadas de tiles são enviadas, sem códigos de furos nem dados da empresa. A data da imagem varia por região e não é informada pelo serviço de tiles. Cache de 12 vistas por processo por 15 minutos.
 
 ### Imagem gratuita INPE no croqui
 

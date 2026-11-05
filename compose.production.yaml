@@ -4,6 +4,8 @@ services:
     environment:
       NODE_ENV: production
       INPE_MAP_ENABLED: ${INPE_MAP_ENABLED:-true}
+      ESRI_MAP_ENABLED: ${ESRI_MAP_ENABLED:-true}
+      ESRI_API_KEY: ${ESRI_API_KEY:-}
       DEV_AUTH_BYPASS: 'false'
       GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
       DATABASE_URL: ${DATABASE_URL:?Runtime PostgreSQL URL required}
@@ -25,6 +27,8 @@ services:
     environment:
       NODE_ENV: production
       INPE_MAP_ENABLED: ${INPE_MAP_ENABLED:-true}
+      ESRI_MAP_ENABLED: ${ESRI_MAP_ENABLED:-true}
+      ESRI_API_KEY: ${ESRI_API_KEY:-}
       WORKER_DATABASE_URL: ${WORKER_DATABASE_URL:?Restricted worker URL required}
       S3_ENDPOINT: ${S3_ENDPOINT:-}
       S3_REGION: ${S3_REGION:-us-east-1}

@@ -9,7 +9,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { validateReportEligibility } from './report-eligibility';
-import { googleMapReference, inpeMapBackground } from '@spt/map-reference';
+import { googleMapReference, mapBackground } from '@spt/map-reference';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { parseMapView, reportMap, MapView } from './report-map';
@@ -358,19 +358,28 @@ export class ReportsService {
         map,
       };
     });
-    const imagery = result.map ? await inpeMapBackground(result.map) : undefined;
+    const imagery = result.map ? await mapBackground(result.map) : undefined;
     return {
       ...result,
       svg: result.map ? technicalMap(result.map, imagery) : null,
       google: result.map ? googleMapReference(result.map) : null,
       imagery:
         imagery?.state === 'ready'
-          ? {
-              state: 'ready',
-              scene: imagery.background.scene,
-              date: imagery.background.date,
-              pixelSizeM: imagery.background.pixelSizeM,
-            }
+          ? imagery.background.provider === 'esri'
+            ? {
+                state: 'ready',
+                provider: 'esri',
+                zoom: imagery.background.zoom,
+                pixelSizeM: imagery.background.pixelSizeM,
+                attribution: imagery.background.attribution,
+              }
+            : {
+                state: 'ready',
+                provider: 'inpe',
+                scene: imagery.background.scene,
+                date: imagery.background.date,
+                pixelSizeM: imagery.background.pixelSizeM,
+              }
           : imagery,
     };
   }

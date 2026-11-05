@@ -10,7 +10,14 @@ interface View {
 }
 interface Preview {
   imagery?:
-    | { state: 'ready'; scene: string; date: string; pixelSizeM: number }
+    | {
+        state: 'ready';
+        provider: 'esri';
+        zoom: number;
+        pixelSizeM: number;
+        attribution: string;
+      }
+    | { state: 'ready'; provider?: 'inpe'; scene: string; date: string; pixelSizeM: number }
     | { state: 'unavailable'; reason: string }
     | { state: 'disabled' };
   google: { embedUrl: string | null; externalUrl: string } | null;
@@ -140,8 +147,9 @@ export function MapPreview({
       ) : data.map ? (
         <>
           <p className="help">
-            O croqui abaixo usa imagem gratuita do INPE quando há cobertura útil. O PDF inclui a
-            imagem, os furos e a escala. O Google Maps é apenas uma consulta de localização.
+            O croqui abaixo usa imagem de satélite de alta resolução (Esri World Imagery) e, se ela
+            faltar, a imagem gratuita do INPE. O PDF inclui a imagem, os furos e a escala. O Google
+            Maps é apenas uma consulta de localização.
           </p>
           {data.google?.embedUrl ? (
             <iframe
@@ -168,7 +176,14 @@ export function MapPreview({
           {image ? (
             <img src={image} alt="Prévia do croqui com os furos selecionados em azul" />
           ) : null}
-          {data.imagery?.state === 'ready' ? (
+          {data.imagery?.state === 'ready' && data.imagery.provider === 'esri' ? (
+            <p className="help">
+              Imagem de satélite: {data.imagery.attribution} (Esri World Imagery) · resolução
+              aproximada de {String(data.imagery.pixelSizeM).replace('.', ',')} m por pixel. Imagem
+              recortada, reprojetada e reamostrada; a data da imagem varia por região e não
+              representa levantamento cadastral.
+            </p>
+          ) : data.imagery?.state === 'ready' ? (
             <p className="help">
               Fonte: INPE / CBERS-4A · {data.imagery.date.split('-').reverse().join('/')} · pixel de{' '}
               {data.imagery.pixelSizeM} m. Imagem recortada, reprojetada e reamostrada; pode conter
@@ -186,10 +201,10 @@ export function MapPreview({
             <div role="status">
               <p>
                 {data.imagery.reason === 'coverage'
-                  ? 'Não foi encontrada imagem INPE com cobertura útil completa nas cenas consultadas. Os furos permanecem no croqui técnico.'
+                  ? 'Não foi encontrada imagem de satélite com cobertura útil para este enquadramento. Os furos permanecem no croqui técnico.'
                   : data.imagery.reason === 'extent'
-                    ? 'Para carregar a imagem INPE, ajuste a abrangência para até 1.500 m. O croqui técnico continua disponível.'
-                    : 'Não foi possível carregar a imagem INPE. O croqui técnico continua disponível.'}
+                    ? 'Para carregar a imagem de satélite, ajuste a abrangência para até 1.500 m. O croqui técnico continua disponível.'
+                    : 'Não foi possível carregar a imagem de satélite. O croqui técnico continua disponível.'}
               </p>
               <Button
                 icon={RefreshCw}
@@ -197,7 +212,7 @@ export function MapPreview({
                 disabled={busy}
                 onClick={() => setRevision((v) => v + 1)}
               >
-                Tentar carregar imagem INPE
+                Tentar carregar imagem de satélite
               </Button>
             </div>
           ) : null}
