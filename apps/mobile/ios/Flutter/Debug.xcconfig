@@ -1,0 +1,6 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+#include "Generated.xcconfig"
+// Local simulator signing; physical-device provisioning remains managed by Xcode.
+CODE_SIGN_IDENTITY[sdk=iphonesimulator*] = -
+CODE_SIGNING_ALLOWED[sdk=iphonesimulator*] = YES
+CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*] = Runner/Simulator.entitlements
