@@ -3,13 +3,26 @@ import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { TenantDatabaseService } from '../database/tenant-database.service';
-import { dummyHash, verifyPassword } from './password';
+import { dummyHash, hashPassword, verifyPassword } from './password';
 import { Identity, TokenService } from './token.service';
 
 const refreshDays = 7;
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 const newRefresh = () => randomBytes(32).toString('base64url');
 const invalid = () => new UnauthorizedException('Invalid credentials or session');
+const wrongPassword = (identity: Identity) => {
+  console.warn(
+    JSON.stringify({
+      event: 'password_change_failed',
+      userId: identity.userId,
+      tenantId: identity.tenantId,
+    }),
+  );
+  return new UnauthorizedException({
+    code: 'PASSWORD_INVALID',
+    message: 'Current password is incorrect',
+  });
+};
 
 @Injectable()
 export class AuthService {
@@ -137,6 +150,36 @@ export class AuthService {
       additionalRoles: membership.additionalRoles,
       canDownloadReports: membership.canDownloadReports,
     };
+  }
+
+  /** Keeps the caller's session family and ends every other session of the user. */
+  async changePassword(
+    identity: Identity,
+    currentPassword: string,
+    replacement: string,
+  ): Promise<void> {
+    const user = await this.db.user.findUnique({ where: { id: identity.userId } });
+    if (!(await verifyPassword(currentPassword, user?.passwordHash ?? dummyHash)) || !user?.active)
+      throw wrongPassword(identity);
+    const hash = await hashPassword(replacement);
+    const changed = await this.tenants.run(identity, async (tx) => {
+      await this.mfa.lock(tx, identity.userId);
+      const [row] = await tx.$queryRaw<
+        Array<{ changed: boolean }>
+      >`SELECT change_own_password(${user.passwordHash},${hash}) AS changed`;
+      if (!row.changed) return false;
+      await tx.authSession.updateMany({
+        where: {
+          userId: identity.userId,
+          familyId: { not: identity.sessionId },
+          revokedAt: null,
+        },
+        data: { revokedAt: new Date() },
+      });
+      return true;
+    });
+    // Another request changed the password after the check above.
+    if (!changed) throw wrongPassword(identity);
   }
 
   async logout(identity: Identity) {

@@ -1,6 +1,8 @@
+import { templateSince } from './template-version';
+import { snapshotCompanyLogo } from './company-brand';
 import { metroIcon } from './metro-brand';
 import { PRINT_LAYOUT } from './print-layout';
-import type { ReportSnapshot } from './index';
+import type { ReportSnapshot } from './types';
 import { escapeHtml as e } from './html';
 export const numeric = (n: string | number) =>
   Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
@@ -10,7 +12,13 @@ export function sheetHeader(
   h?: ReportSnapshot['holes'][number],
   preview?: { fieldDateLabel?: string },
 ) {
-  return `<header class="brand-header"><div class="brand">${s.templateVersion === '0.8.11' ? metroIcon : `<svg viewBox="0 0 46 46" width="39" height="39" aria-hidden="true"><path d="M4 16L23 5l19 11-19 11z" fill="none" stroke="#ed7900" stroke-width="3"/><path d="M4 24l19 11 19-11M4 32l19 11 19-11" fill="none" stroke="#303030" stroke-width="3"/></svg>`}<strong>${e(s.tenant.name)}</strong></div><div class="report-heading"><b>RELATÓRIO DE SONDAGEM SPT</b><span>${e(subtitle)}</span></div><div class="folio">Folha<br><b>__SHEET__ / __TOTAL__</b></div></header><div class="identification"><table><tr><td><b>Cliente:</b> ${e(s.work.clientName ?? 'Não informado')}</td></tr><tr><td><b>Obra:</b> ${e(s.work.name)}</td></tr><tr><td><b>Local:</b> ${e([s.work.city, s.work.state, s.work.address].filter(Boolean).join(' · ') || 'Não informado')}</td></tr></table><table class="hole-id"><tr><td><b>${h ? 'Furo: ' + e(h.code) : 'Locação dos furos'}</b></td></tr><tr><td><b>${h ? 'Data de campo:' : 'Data de emissão:'}</b> ${e(h ? (preview?.fieldDateLabel ?? h.fieldDate.slice(0, 10).split('-').reverse().join('/')) : new Date(s.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }))}</td></tr><tr><td><b>${h ? 'Cota (m):' : 'Cotas:'}</b> ${h ? (h.officialCoordinate.altitudeM != null ? numeric(h.officialCoordinate.altitudeM) : 'Não informada') : 'Conforme perfis dos furos'}</td></tr></table></div>`;
+  const logo = snapshotCompanyLogo(s);
+  const company = templateSince(s.templateVersion, '0.8.13')
+    ? logo
+      ? `<img class="report-company-header-logo" src="${logo}" alt="${e(s.tenant.name)}">`
+      : `<strong>${e(s.tenant.name)}</strong>`
+    : null;
+  return `<header class="brand-header"><div class="brand">${company ?? `${templateSince(s.templateVersion, '0.8.11') ? metroIcon : `<svg viewBox="0 0 46 46" width="39" height="39" aria-hidden="true"><path d="M4 16L23 5l19 11-19 11z" fill="none" stroke="#ed7900" stroke-width="3"/><path d="M4 24l19 11 19-11M4 32l19 11 19-11" fill="none" stroke="#303030" stroke-width="3"/></svg>`}<strong>${e(s.tenant.name)}</strong>`}</div><div class="report-heading"><b>RELATÓRIO DE SONDAGEM SPT</b><span>${e(subtitle)}</span></div><div class="folio">Folha<br><b>__SHEET__ / __TOTAL__</b></div></header><div class="identification"><table><tr><td><b>Cliente:</b> ${e(s.work.clientName ?? 'Não informado')}</td></tr><tr><td><b>Obra:</b> ${e(s.work.name)}</td></tr><tr><td><b>Local:</b> ${e([s.work.city, s.work.state, s.work.address].filter(Boolean).join(' · ') || 'Não informado')}</td></tr></table><table class="hole-id"><tr><td><b>${h ? 'Furo: ' + e(h.code) : 'Locação dos furos'}</b></td></tr><tr><td><b>${h ? 'Data de campo:' : 'Data de emissão:'}</b> ${e(h ? (preview?.fieldDateLabel ?? h.fieldDate.slice(0, 10).split('-').reverse().join('/')) : new Date(s.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }))}</td></tr><tr><td><b>${h ? 'Cota (m):' : 'Cotas:'}</b> ${h ? (h.officialCoordinate.altitudeM != null ? numeric(h.officialCoordinate.altitudeM) : 'Não informada') : 'Conforme perfis dos furos'}</td></tr></table></div>`;
 }
 export function sheetFooter(
   s: ReportSnapshot,
@@ -34,6 +42,7 @@ th { background: #f3f3f3; font-weight: 700; }
 .brand { display: flex; align-items: center; gap: 7px; width: 38%; min-width: 0; }
 .brand strong { font-size: 12pt; line-height: 1.1; overflow-wrap: anywhere; }
 .brand svg { flex-shrink: 0; }
+.report-company-header-logo { display: block; width: auto; max-width: 100%; height: 39px; object-fit: contain; object-position: left center; }
 .report-heading { flex: 1; min-width: 0; padding-left: 12px; border-left: 1px solid #aaa; font-size: 8.5pt; }
 .report-heading b { font-size: 9pt; }
 .report-heading span { display: block; margin-top: 4px; }

@@ -6,6 +6,20 @@ import {
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { createHash } from 'node:crypto';
+/** Any failed storage operation. The cause stays out of the message so it never reaches a client. */
+export class StorageUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super('Private storage unavailable', { cause });
+    this.name = 'StorageUnavailableError';
+  }
+}
+async function guarded<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (cause) {
+    throw new StorageUnavailableError(cause);
+  }
+}
 export class PrivateStorage {
   private readonly client: S3Client;
   private readonly bucket: string;
@@ -35,34 +49,44 @@ export class PrivateStorage {
     });
   }
   async put(key: string, body: Buffer, mime: string) {
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: body,
-        ContentType: mime,
-        Metadata: { sha256: createHash('sha256').update(body).digest('hex') },
-      }),
+    await guarded(() =>
+      this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: body,
+          ContentType: mime,
+          Metadata: { sha256: createHash('sha256').update(body).digest('hex') },
+        }),
+      ),
     );
   }
   async get(key: string, maxBytes = 20 * 1024 * 1024) {
-    const result = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
-    if (!result.Body || !result.ContentLength || result.ContentLength > maxBytes)
-      throw new Error('Invalid stored object size');
-    const chunks: Buffer[] = [];
-    let size = 0;
-    for await (const chunk of result.Body as AsyncIterable<Uint8Array>) {
-      size += chunk.length;
-      if (size > maxBytes) throw new Error('Stored object limit exceeded');
-      chunks.push(Buffer.from(chunk));
-    }
-    return Buffer.concat(chunks);
+    return guarded(async () => {
+      const result = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      if (!result.Body || !result.ContentLength || result.ContentLength > maxBytes)
+        throw new Error('Invalid stored object size');
+      const chunks: Buffer[] = [];
+      let size = 0;
+      for await (const chunk of result.Body as AsyncIterable<Uint8Array>) {
+        size += chunk.length;
+        if (size > maxBytes) throw new Error('Stored object limit exceeded');
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    });
   }
   async head(key: string) {
-    return this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+    return guarded(() =>
+      this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key })),
+    );
   }
   async remove(key: string) {
-    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+    await guarded(() =>
+      this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key })),
+    );
   }
   close() {
     this.client.destroy();

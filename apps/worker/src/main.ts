@@ -1,6 +1,7 @@
 import { processNextPhoto } from './photo-worker';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { runQueueLoops } from './queue-loop';
 import { processNextReport } from './report-worker';
 async function main() {
   const connectionString = process.env.WORKER_DATABASE_URL;
@@ -21,11 +22,12 @@ async function main() {
     >`SELECT (r.rolname='spt_worker' AND NOT r.rolsuper AND NOT r.rolbypassrls AND NOT EXISTS(SELECT 1 FROM pg_tables WHERE schemaname='public' AND tableowner=current_user)) AS safe FROM pg_roles r WHERE r.rolname=current_user`;
     if (!role?.safe) throw Error('Worker requires restricted spt_worker role');
     console.log(JSON.stringify({ event: 'worker_started' }));
-    while (!stopping) {
-      const photo = await processNextPhoto(db);
-      if (!(await processNextReport(db)) && !photo)
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
+    await runQueueLoops([() => processNextPhoto(db), () => processNextReport(db)], {
+      shouldStop: () => stopping,
+      stop: () => {
+        stopping = true;
+      },
+    });
   } finally {
     await db.$disconnect();
   }

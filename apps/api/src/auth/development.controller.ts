@@ -16,7 +16,7 @@ import { randomBytes, randomUUID, createHash } from 'node:crypto';
 import { Public } from './auth.guard';
 import { TokenService } from './token.service';
 import { TenantDatabaseService } from '../database/tenant-database.service';
-import { developmentBypassEnabled } from './development-access';
+import { developmentBypassEnabled, loopbackRequest } from './development-access';
 
 @Controller('auth')
 export class DevelopmentController {
@@ -38,12 +38,11 @@ export class DevelopmentController {
   @Post('dev-session')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')
-  async session(@Req() request: { ip?: string }, @Body() body?: unknown) {
-    if (
-      !developmentBypassEnabled() ||
-      !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.ip ?? '')
-    )
-      throw new NotFoundException();
+  async session(
+    @Req() request: { ip?: string; socket?: { remoteAddress?: string } },
+    @Body() body?: unknown,
+  ) {
+    if (!developmentBypassEnabled() || !loopbackRequest(request)) throw new NotFoundException();
     if (
       body !== undefined &&
       (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length)
@@ -81,10 +80,13 @@ export class DevelopmentController {
   @Post('dev-role')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')
-  async role(@Req() request: AuthRequest & { ip?: string }, @Body() body: unknown) {
+  async role(
+    @Req() request: AuthRequest & { ip?: string; socket?: { remoteAddress?: string } },
+    @Body() body: unknown,
+  ) {
     if (
       !developmentBypassEnabled() ||
-      !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.ip ?? '') ||
+      !loopbackRequest(request) ||
       request.identity.userId !== process.env.DEV_AUTH_USER_ID ||
       request.identity.tenantId !== process.env.DEV_AUTH_TENANT_ID
     )

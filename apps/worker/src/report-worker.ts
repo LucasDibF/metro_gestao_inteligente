@@ -1,17 +1,9 @@
-import { inpeMapBackground } from '@spt/map-reference';
-import { validateReportLayout } from './report-preflight';
+import { renderReportPdf, PermanentReportError } from './report-renderer';
 import { PrismaClient } from '@prisma/client';
-import { chromium } from 'playwright';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import { PrivateStorage } from '@spt/private-storage';
-import {
-  canonicalJson,
-  renderReport,
-  ReportSnapshot,
-  TEMPLATE_VERSION,
-  PRINT_LAYOUT,
-} from '@spt/report-templates';
+import { canonicalJson, ReportSnapshot, isSupportedTemplateVersion } from '@spt/report-templates';
 interface Job {
   id: string;
   tenantId: string;
@@ -34,32 +26,14 @@ export async function processNextReport(
   if (!job) return false;
   const started = Date.now();
   let heartbeat: ReturnType<typeof setInterval> | undefined,
-    pdfTimeout: ReturnType<typeof setTimeout> | undefined,
     storage: PrivateStorage | undefined,
-    browser: Awaited<ReturnType<typeof chromium.launch>> | undefined,
     permanent = false;
   try {
     const snapshot = job.snapshot;
     if (
       hash(canonicalJson(snapshot)) !== job.snapshotHash ||
       snapshot.schemaVersion !== 1 ||
-      ![
-        TEMPLATE_VERSION,
-        '0.8.10',
-        '0.8.9',
-        '0.8.8',
-        '0.8.7',
-        '0.8.6',
-        '0.8.5',
-        '0.8.4',
-        '0.8.3',
-        '0.8.2',
-        '0.8.1',
-        '0.8.0',
-        '0.7.0',
-        '0.7.1',
-        '0.7.2',
-      ].includes(snapshot.templateVersion) ||
+      !isSupportedTemplateVersion(snapshot.templateVersion) ||
       !Array.isArray(snapshot.holes) ||
       !snapshot.holes.length ||
       snapshot.holes.length > 20 ||
@@ -110,74 +84,7 @@ export async function processNextReport(
         }),
       );
     }
-    browser = await chromium.launch({
-      channel: options.channel ?? process.env.PDF_BROWSER_CHANNEL,
-      headless: true,
-    });
-    const context = await browser.newContext({
-      serviceWorkers: 'block',
-      javaScriptEnabled: false,
-      locale: 'pt-BR',
-      timezoneId: 'America/Sao_Paulo',
-    });
-    await context.route('**/*', (route) => route.abort());
-    const page = await context.newPage();
-    page.setDefaultTimeout(60000);
-    const imagery = [
-      TEMPLATE_VERSION,
-      '0.8.10',
-      '0.8.9',
-      '0.8.8',
-      '0.8.7',
-      '0.8.6',
-      '0.8.5',
-      '0.8.4',
-      '0.8.3',
-      '0.8.2',
-      '0.8.1',
-      '0.8.0',
-    ].includes(snapshot.templateVersion)
-      ? await inpeMapBackground(snapshot.map)
-      : undefined;
-    await page.setContent(renderReport(snapshot, photos, imagery), {
-      waitUntil: 'load',
-      timeout: 60000,
-    });
-    await page.emulateMedia({ media: 'print' });
-    await page.setViewportSize({
-      width: Math.ceil((PRINT_LAYOUT.contentWidthMm * 96) / 25.4),
-      height: Math.ceil((PRINT_LAYOUT.contentHeightMm * 96) / 25.4),
-    });
-    try {
-      await validateReportLayout(page);
-    } catch (error) {
-      permanent = true;
-      throw error;
-    }
-    if (options.capturePath) await page.screenshot({ path: options.capturePath, fullPage: true });
-    pdfTimeout = setTimeout(() => {
-      void browser?.close();
-    }, 60000);
-    const pdf = await page.pdf({
-      format: 'A4',
-      preferCSSPageSize: true,
-      printBackground: true,
-      displayHeaderFooter: true,
-      headerTemplate: '<span></span>',
-      footerTemplate:
-        '<div style="font-family:Arial,sans-serif;font-size:8px;width:100%;text-align:center;color:#555">Metro · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
-      margin: {
-        top: PRINT_LAYOUT.margins.top + 'mm',
-        bottom: PRINT_LAYOUT.margins.bottom + 'mm',
-        left: PRINT_LAYOUT.margins.left + 'mm',
-        right: PRINT_LAYOUT.margins.right + 'mm',
-      },
-    });
-    clearTimeout(pdfTimeout);
-    if (pdf.length > 20 * 1024 * 1024) {
-      permanent = true;
-      throw Error('PDF size limit');
-    }
+    const { pdf, browserVersion } = await renderReportPdf(snapshot, photos, options);
     const sha = hash(pdf),
       key = `${job.tenantId}/${job.workId}/reports/${job.id}/${sha}.pdf`;
     await storage.put(key, pdf, 'application/pdf');
@@ -194,10 +101,11 @@ export async function processNextReport(
         attempt: job.attempts,
         published: published.ok,
         durationMs: Date.now() - started,
-        browserVersion: browser.version(),
+        browserVersion,
       }),
     );
   } catch (error) {
+    permanent ||= error instanceof PermanentReportError;
     await db.$queryRaw`SELECT fail_report_job(${job.id}::uuid,${job.leaseToken}::uuid,${permanent})`;
     console.error(
       JSON.stringify({
@@ -212,8 +120,6 @@ export async function processNextReport(
     );
   } finally {
     if (heartbeat) clearInterval(heartbeat);
-    if (pdfTimeout) clearTimeout(pdfTimeout);
-    await browser?.close();
     storage?.close();
   }
   return true;

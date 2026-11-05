@@ -55,6 +55,14 @@ test('SPT saves raw data and server results, enforces roles/tenants and serializ
         },
       });
     }
+    await admin.workAssignment.create({
+      data: {
+        workId: works[0],
+        tenantId: tenants[0],
+        operatorId: users[2].id,
+        assignedBy: users[0].id,
+      },
+    });
     await app.listen(0, '127.0.0.1');
     const base = `${await app.getUrl()}/api/v1`;
     const tokens = await Promise.all(
@@ -214,6 +222,7 @@ test('SPT saves raw data and server results, enforces roles/tenants and serializ
     await admin.sptTest.deleteMany({ where: { tenantId: { in: tenants } } });
     await admin.technicalEvent.deleteMany({ where: { tenantId: { in: tenants } } });
     await admin.borehole.deleteMany({ where: { tenantId: { in: tenants } } });
+    await admin.workAssignment.deleteMany({ where: { tenantId: { in: tenants } } });
     await admin.work.deleteMany({ where: { id: { in: works } } });
     const ids = users.map((u) => u.id);
     await admin.authSession.deleteMany({ where: { userId: { in: ids } } });

@@ -1,4 +1,5 @@
-import { formatSoilDescription } from '@spt/geotechnical-engine';
+import { reportCompany } from '../reports/report-identity';
+import { reportSoilDescription } from '../reports/report-soil-description';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
   renderInteractiveProfile,
@@ -16,7 +17,7 @@ export class InteractiveSheetService {
   ) {}
   get(c: TenantContext, workId: string, boreholeId: string, renderSheet = true) {
     return this.db.run(c, async (tx) => {
-      const hole = await this.technical.parent(tx, c, workId, boreholeId);
+      const hole = await this.technical.visibleParent(tx, c, workId, boreholeId);
       const work = await tx.work.findFirstOrThrow({
         where: { id: workId, tenantId: c.tenantId, deletedAt: null },
       });
@@ -66,7 +67,7 @@ export class InteractiveSheetService {
         templateVersion: TEMPLATE_VERSION,
         createdAt: new Date().toISOString(),
         issueNumber: 0,
-        tenant: { id: tenant.id, name: tenant.name },
+        tenant: reportCompany(tenant),
         work: {
           id: work.id,
           name: work.name,
@@ -106,11 +107,7 @@ export class InteractiveSheetService {
               fromM: String(layer.fromM),
               toM: String(layer.toM),
               soilType: layer.soilType,
-              description: formatSoilDescription([
-                layer.soilColor,
-                layer.soilMoisture,
-                layer.description,
-              ]),
+              description: reportSoilDescription(layer),
             })),
           },
         ],

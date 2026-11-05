@@ -1,9 +1,17 @@
-import type { ReportSnapshot } from './index';
+import { snapshotCompanyLogo } from './company-brand';
+import type { ReportSnapshot } from './types';
+import { templateSince } from './template-version';
 import { metroWordmark } from './metro-brand';
 import { escapeHtml as e } from './html';
 
 /** Based on the centered cover in sondagem; uses only immutable issue data. */
 export function reportCover(s: ReportSnapshot): string {
+  const logo = snapshotCompanyLogo(s);
+  const companyBrand = templateSince(s.templateVersion, '0.8.13')
+    ? logo
+      ? `<span class="report-company-cover-logo"><img src="${logo}" alt="${e(s.tenant.name)}"></span>`
+      : ''
+    : null;
   const issued = new Date(s.createdAt);
   const options = { timeZone: 'America/Sao_Paulo' };
   const date = issued.toLocaleDateString('pt-BR', options);
@@ -19,7 +27,7 @@ export function reportCover(s: ReportSnapshot): string {
         <div><dt>Data do relatório</dt><dd>${e(date)}</dd></div>
       </dl>
     </div>
-    <div class="cover-bottom">${s.templateVersion === '0.8.11' ? `<span class="report-platform">${metroWordmark}</span>` : ''}<p class="cover-location">${e(city)}</p><p class="cover-year">${e(year)}</p>
+    <div class="cover-bottom">${companyBrand ?? (['0.8.11', '0.8.12'].includes(s.templateVersion) ? `<span class="report-platform">${metroWordmark}</span>` : '')}<p class="cover-location">${e(city)}</p><p class="cover-year">${e(year)}</p>
       <p class="cover-trace">Emissão ${s.issueNumber} · Composição ${s.report.version} · Modelo ${e(s.templateVersion)} · Folha __SHEET__ / __TOTAL__</p>
     </div>
   </section>`;
@@ -28,6 +36,8 @@ export function reportCover(s: ReportSnapshot): string {
 /** Scoped to the new cover so approved profile geometry remains untouched. */
 export const coverCss = `
 .report-cover { min-height: 244mm; padding: 22mm 14mm 10mm; text-align: center; justify-content: space-between; font-family: "Times New Roman", Times, serif; }
+.report-company-cover-logo { display: block; width: 58mm; margin: 0 auto 4mm; }
+.report-company-cover-logo img { display: block; width: 100%; height: auto; max-height: 20mm; object-fit: contain; }
 .cover-company { font-size: 15pt; font-weight: 700; line-height: 1.3; text-transform: uppercase; overflow-wrap: anywhere; }
 .cover-main { padding: 10mm 0; }
 .cover-main h1 { margin: 0 0 14mm; font-size: 20pt; line-height: 1.45; font-weight: 700; }

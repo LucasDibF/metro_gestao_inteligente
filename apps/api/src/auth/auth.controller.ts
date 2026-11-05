@@ -14,7 +14,7 @@ import { AuthService } from './auth.service';
 import { AuthRequest, Public } from './auth.guard';
 import { TenantDatabaseService } from '../database/tenant-database.service';
 
-import { object, text } from './auth-input';
+import { newPassword, object, text } from './auth-input';
 
 @Controller('auth')
 @Throttle({ default: { limit: 30, ttl: 60000 } })
@@ -60,6 +60,19 @@ export class AuthController {
   }
 
   @Header('Cache-Control', 'no-store')
+  @Post('password')
+  @HttpCode(204)
+  async changePassword(@Req() request: AuthRequest, @Body() body: unknown) {
+    const input = object(body);
+    const replacement = newPassword(input.newPassword);
+    await this.auth.changePassword(
+      request.identity,
+      text(input.currentPassword, 1024),
+      replacement,
+    );
+  }
+
+  @Header('Cache-Control', 'no-store')
   @Get('me')
   async me(@Req() request: AuthRequest) {
     const identity = request.identity;
@@ -80,7 +93,11 @@ export class AuthController {
       return {
         userId: identity.userId,
         mfaEnabled: Boolean(mfa?.enabledAt),
-        tenant: { id: tenant.id, name: tenant.name },
+        tenant: {
+          id: tenant.id,
+          name: tenant.name,
+          ...(tenant.profile ? { profile: tenant.profile } : {}),
+        },
         role: membership.role,
         additionalRoles: membership.additionalRoles,
         canDownloadReports: membership.canDownloadReports,

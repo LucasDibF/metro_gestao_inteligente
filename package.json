@@ -17,7 +17,7 @@
     "dev:worker": "npm run dev -w @spt/worker",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "test:integration": "tsx --env-file-if-exists=.env.test scripts/check-test-target.ts && tsx --tsconfig tsconfig.base.json --env-file-if-exists=.env.test --test tests/integration/*.test.ts",
+    "test:integration": "tsx --env-file-if-exists=.env.test scripts/check-test-target.ts && tsx --tsconfig tsconfig.base.json --env-file-if-exists=.env.test --test --test-concurrency=1 tests/integration/*.test.ts",
     "db:setup:local": "tsx --tsconfig tsconfig.base.json scripts/setup-local-database.ts",
     "user:create:local": "tsx --tsconfig tsconfig.base.json scripts/create-local-user.ts",
     "test:browser": "playwright test",
@@ -32,7 +32,9 @@
     "worker:setup:local": "tsx --tsconfig tsconfig.base.json scripts/setup-local-worker.ts",
     "backup:verify:local": "tsx --tsconfig tsconfig.base.json scripts/verify-local-restore.ts",
     "test:setup:local": "tsx --tsconfig tsconfig.base.json scripts/setup-local-tests.ts",
-    "dev:demo": "tsx --tsconfig tsconfig.base.json scripts/seed-local-demo.ts"
+    "dev:demo": "tsx --tsconfig tsconfig.base.json scripts/seed-local-demo.ts",
+    "dev:local": "node scripts/start-workspace.cjs",
+    "dev:testing": "node scripts/start-workspace.cjs test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",

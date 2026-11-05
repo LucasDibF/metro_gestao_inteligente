@@ -1,4 +1,5 @@
-import { lockWork } from './work-lock';
+import { lockWork, readWork } from './work-lock';
+import { boreholeSelectFor, type BoreholeReader } from './borehole-select';
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
@@ -10,9 +11,15 @@ export class HierarchyService {
   private async parent(tx: Prisma.TransactionClient, context: TenantContext, workId: string) {
     await lockWork(tx, context, workId);
   }
-  list(context: TenantContext, workId: string, borehole: boolean, page: number, folderId?: string) {
+  list(
+    context: TenantContext & BoreholeReader,
+    workId: string,
+    borehole: boolean,
+    page: number,
+    folderId?: string,
+  ) {
     return this.db.run(context, async (tx) => {
-      await this.parent(tx, context, workId);
+      await readWork(tx, context, workId);
       if (
         borehole &&
         folderId &&
@@ -37,7 +44,9 @@ export class HierarchyService {
         take: 20,
       };
       return {
-        items: borehole ? await tx.borehole.findMany(query) : await tx.folder.findMany(query),
+        items: borehole
+          ? await tx.borehole.findMany({ ...query, select: boreholeSelectFor(context) })
+          : await tx.folder.findMany(query),
         total: borehole ? await tx.borehole.count({ where }) : await tx.folder.count({ where }),
         page,
         pageSize: 20,

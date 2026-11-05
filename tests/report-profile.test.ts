@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { snapshotCompanyLogo } from '../packages/report-templates/src/company-brand';
 import assert from 'node:assert/strict';
 import {
   sampledLayers,
@@ -410,7 +411,7 @@ test('terminal 30/6 ends the displayed profile at 3.06 without zero or deeper me
 });
 test('new report versions print recorded execution methods without changing legacy snapshots', () => {
   const recorded = structuredClone(hole);
-  recorded.tests[0].fieldDetails = { executionMethod: 'SP_TH', sampleRecovery: 'PARCIAL' };
+  recorded.tests[0].fieldDetails = { executionMethod: 'SP_TH' };
   const latest = engineeringProfiles({ ...snapshot, templateVersion: '0.8.1' }, recorded);
   assert.match(latest, /SP\+TH/);
   assert.doesNotMatch(
@@ -733,4 +734,55 @@ test('Metro identity changes branding and map palette without changing technical
     charts(engineeringProfiles(current, hole)),
     charts(engineeringProfiles(legacy, hole)),
   );
+});
+
+test('0.8.14 prints the recorded stop reason and explains measured curve points', () => {
+  const stopped = {
+    ...hole,
+    executedDepthM: '1',
+    tests: [
+      {
+        ...hole.tests[0],
+        depthM: '1',
+        interruptionReason: 'Impenetrável <ao> trépano',
+        result: { status: 'INTERRUPTED', nSpt: null },
+      },
+    ],
+  };
+  const current = engineeringProfiles({ ...snapshot, templateVersion: '0.8.14' }, stopped);
+  assert.ok(current.includes('<b>Motivo da paralisação:</b> Impenetrável &lt;ao&gt; trépano'));
+  assert.ok(current.includes('que não é N-SPT'));
+  const older = engineeringProfiles({ ...snapshot, templateVersion: '0.8.13' }, stopped);
+  assert.ok(older.includes('<b>Motivo da paralisação:</b> não registrado'));
+  assert.ok(!older.includes('que não é N-SPT'));
+  const long = engineeringProfiles(
+    { ...snapshot, templateVersion: '0.8.14' },
+    { ...stopped, tests: [{ ...stopped.tests[0], interruptionReason: 'x'.repeat(200) }] },
+  );
+  assert.match(long, /Motivo da paralisação:<\/b> ver observações a /);
+});
+
+test('0.8.14 does not classify a metre shared by two soil groups', () => {
+  const mixed = {
+    ...hole,
+    executedDepthM: '1',
+    layers: [
+      { fromM: '0', toM: '0.5', soilType: 'Areia fina', description: 'A.' },
+      { fromM: '0.5', toM: '1', soilType: 'Argila arenosa', description: 'B.' },
+    ],
+    tests: [{ ...hole.tests[0], depthM: '1', result: { status: 'CONVENTIONAL', nSpt: 14 } }],
+  };
+  const classes = (singleGroupOnly: boolean) =>
+    sampledLayers(mixed, true, false, false, singleGroupOnly).map((l) => l.description);
+  assert.deepEqual(classes(true), ['A.', 'B.']);
+  assert.match(classes(false)[0], /^Medianamente compacta\./);
+  assert.match(classes(false)[1], /^Rija\./);
+});
+
+test('company branding remains active in versions after 0.8.13', () => {
+  const logo = 'data:image/png;base64,iVBORw0KGgo=';
+  const tenant = { ...snapshot.tenant, logoDataUrl: logo };
+  for (const templateVersion of ['0.8.13', '0.8.14'])
+    assert.equal(snapshotCompanyLogo({ ...snapshot, templateVersion, tenant }), logo);
+  assert.equal(snapshotCompanyLogo({ ...snapshot, templateVersion: '0.8.12', tenant }), undefined);
 });

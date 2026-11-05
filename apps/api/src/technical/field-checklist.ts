@@ -1,3 +1,5 @@
+import { missingMetres } from './review-validation';
+import { testEndDepth } from '@spt/geotechnical-engine';
 type Depth = { toString(): string } | string | number | null;
 export function fieldChecklist(
   hole: {
@@ -42,6 +44,7 @@ export function fieldChecklist(
           (t) =>
             Array.isArray(t.advances) &&
             (t.advances.length > 0 ||
+              (t.result as { status?: string }).status === 'INTERRUPTED' ||
               (Number(t.depthM) === 1 &&
                 (t.result as { status?: string }).status === 'NOT_TESTED')) &&
             (t.result as { status?: string }).status !== 'INCOMPLETE',
@@ -53,7 +56,16 @@ export function fieldChecklist(
       label: 'Ensaios dentro da profundidade executada',
       complete:
         hole.executedDepthM !== null &&
-        tests.every((t) => Number(t.depthM) <= Number(hole.executedDepthM)),
+        tests.every((t) => testEndDepth(t) <= Number(hole.executedDepthM)),
+      stage: 'review',
+    },
+    {
+      id: 'metres',
+      label: 'Todos os metros registrados até o encerramento',
+      complete:
+        tests.length > 0 &&
+        hole.executedDepthM !== null &&
+        missingMetres(hole.executedDepthM, tests).length === 0,
       stage: 'review',
     },
     {

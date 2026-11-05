@@ -1,4 +1,5 @@
-import { formatSoilDescription } from '@spt/geotechnical-engine';
+import { reportCompany } from './report-identity';
+import { reportSoilDescription } from './report-soil-description';
 import { SOIL_STATE_RULE_VERSION } from '@spt/geotechnical-engine';
 import {
   BadRequestException,
@@ -13,7 +14,6 @@ import { googleMapReference, inpeMapBackground } from '@spt/map-reference';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { parseMapView, reportMap, MapView } from './report-map';
-import { PrivateStorage } from '@spt/private-storage';
 import {
   ReportSnapshot,
   TEMPLATE_VERSION,
@@ -21,7 +21,8 @@ import {
   technicalMap,
 } from '@spt/report-templates';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
-import { lockWork } from '../works/work-lock';
+import { lockWork, readWork } from '../works/work-lock';
+import { privateStorage } from '../files/shared-storage';
 import { expectedVersion, technicalInput, text } from '../technical/technical-input';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
@@ -41,7 +42,7 @@ export class ReportsService {
   constructor(@Inject(TenantDatabaseService) private readonly db: TenantDatabaseService) {}
   list(c: TenantContext, workId: string) {
     return this.db.run(c, async (tx) => {
-      await lockWork(tx, c, workId);
+      await readWork(tx, c, workId);
       return tx.report.findMany({
         where: { workId, tenantId: c.tenantId },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -51,7 +52,7 @@ export class ReportsService {
   }
   options(c: TenantContext, workId: string, page: number) {
     return this.db.run(c, async (tx) => {
-      await lockWork(tx, c, workId);
+      await readWork(tx, c, workId);
       const where = { tenantId: c.tenantId, workId, deletedAt: null };
       return {
         items: await tx.borehole.findMany({
@@ -76,6 +77,17 @@ export class ReportsService {
   }
   private async parent(tx: Prisma.TransactionClient, c: TenantContext, workId: string, id: string) {
     await lockWork(tx, c, workId);
+    const report = await tx.report.findFirst({ where: { id, workId, tenantId: c.tenantId } });
+    if (!report) throw new NotFoundException('Report unavailable');
+    return report;
+  }
+  private async visibleReport(
+    tx: Prisma.TransactionClient,
+    c: TenantContext,
+    workId: string,
+    id: string,
+  ) {
+    await readWork(tx, c, workId);
     const report = await tx.report.findFirst({ where: { id, workId, tenantId: c.tenantId } });
     if (!report) throw new NotFoundException('Report unavailable');
     return report;
@@ -162,7 +174,7 @@ export class ReportsService {
   }
   history(c: TenantContext, workId: string, id: string) {
     return this.db.run(c, async (tx) => {
-      const report = await this.parent(tx, c, workId, id);
+      const report = await this.visibleReport(tx, c, workId, id);
       return {
         report,
         selection: await tx.borehole.findMany({
@@ -202,6 +214,7 @@ export class ReportsService {
       const where = { tenantId: c.tenantId, workId, reportId: id };
       const previous = await tx.reportIssue.findFirst({
         where: { ...where, requestedBy: c.userId, idempotencyKey },
+        select: { id: true, requestHash: true },
       });
       if (previous) {
         if (previous.requestHash !== requestHash)
@@ -267,7 +280,7 @@ export class ReportsService {
         templateVersion: TEMPLATE_VERSION,
         createdAt: new Date().toISOString(),
         issueNumber: report.issueCounter + 1,
-        tenant: { id: tenant.id, name: tenant.name },
+        tenant: reportCompany(tenant),
         work: {
           id: work.id,
           name: work.name,
@@ -296,11 +309,7 @@ export class ReportsService {
             JSON.stringify(
               h.soilLayers.map((layer) => ({
                 ...layer,
-                description: formatSoilDescription([
-                  layer.soilColor,
-                  layer.soilMoisture,
-                  layer.description,
-                ]),
+                description: reportSoilDescription(layer),
               })),
             ),
           ),
@@ -339,7 +348,7 @@ export class ReportsService {
   }
   async map(c: TenantContext, workId: string, id: string) {
     const result = await this.db.run(c, async (tx) => {
-      const report = await this.parent(tx, c, workId, id),
+      const report = await this.visibleReport(tx, c, workId, id),
         composition = report.composition as {
           holeIds: string[];
           showOtherBoreholes: boolean;
@@ -406,26 +415,17 @@ export class ReportsService {
   }
   async download(c: TenantContext, workId: string, id: string, issueId: string) {
     const issue = await this.db.run(c, async (tx) => {
-      await this.parent(tx, c, workId, id);
+      await this.visibleReport(tx, c, workId, id);
       return tx.reportIssue.findFirst({
         where: { id: issueId, reportId: id, workId, tenantId: c.tenantId, state: 'READY' },
+        select: { objectKey: true, pdfSha256: true, issueNumber: true },
       });
     });
     if (!issue?.objectKey || !issue.pdfSha256)
       throw new NotFoundException('Issued PDF unavailable');
-    let storage: PrivateStorage;
-    try {
-      storage = new PrivateStorage();
-    } catch {
-      throw new ServiceUnavailableException('Private storage unavailable');
-    }
-    try {
-      const body = await storage.get(issue.objectKey);
-      if (hash(body) !== issue.pdfSha256)
-        throw new ServiceUnavailableException('PDF integrity check failed');
-      return { body, sha256: issue.pdfSha256, issueNumber: issue.issueNumber };
-    } finally {
-      storage.close();
-    }
+    const body = await privateStorage().get(issue.objectKey);
+    if (hash(body) !== issue.pdfSha256)
+      throw new ServiceUnavailableException('PDF integrity check failed');
+    return { body, sha256: issue.pdfSha256, issueNumber: issue.issueNumber };
   }
 }

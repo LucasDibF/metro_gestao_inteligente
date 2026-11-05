@@ -1,3 +1,14 @@
+const loopback = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
+/** Checks the socket too: `ip` follows X-Forwarded-For once trust proxy is on. */
+export function loopbackRequest(request: {
+  ip?: string;
+  socket?: { remoteAddress?: string };
+}): boolean {
+  return (
+    loopback.includes(request.ip ?? '') &&
+    loopback.includes(request.socket?.remoteAddress ?? request.ip ?? '')
+  );
+}
 export function developmentBypassEnabled() {
   const enabled = process.env.DEV_AUTH_BYPASS === 'true';
   if (enabled) {

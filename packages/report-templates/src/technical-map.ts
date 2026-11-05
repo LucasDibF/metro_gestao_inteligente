@@ -1,6 +1,6 @@
 import { METRO_BLUE } from './metro-brand';
 import { placeMapLabels } from './map-labels';
-import type { ReportSnapshot, MapBackground } from './index';
+import type { ReportSnapshot, MapBackground } from './types';
 import { escapeHtml } from './html';
 export function renderTechnicalMap(
   map: ReportSnapshot['map'],
