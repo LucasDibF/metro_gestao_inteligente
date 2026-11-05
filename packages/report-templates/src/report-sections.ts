@@ -32,11 +32,13 @@ const coordinates = (points: ReportSnapshot['map']['points'], all = points, inde
   `<table class="coordinate-table"><thead><tr>${indexed ? '<th style="width:12%">Ref.</th>' : ''}<th>Furo</th><th>E (m)</th><th>N (m)</th></tr></thead><tbody>${points.map((p) => `<tr>${indexed ? `<td>[${all.indexOf(p) + 1}]</td>` : ''}<td>${e(p.code)}</td><td>${numeric(p.x)}</td><td>${numeric(p.y)}</td></tr>`).join('')}</tbody></table>`;
 export function locationSheets(s: ReportSnapshot, imagery?: MapBackground) {
   const imageCredits =
-    imagery?.state === 'ready'
-      ? `<p class="note">Fonte: <a href="https://data.inpe.br/bdc/stac/v1/collections/CB4A-WPM-PCA-FUSED-1">Instituto Nacional de Pesquisas Espaciais (INPE) / CBERS-4A</a> · ${e(imagery.background.date.split('-').reverse().join('/'))} · pixel de 2 m. Imagem recortada, reprojetada e reamostrada. <a href="https://creativecommons.org/licenses/by/4.0/" style="white-space:nowrap">CC BY 4.0</a> · Cena: ${e(imagery.background.scene)}.</p>`
-      : imagery?.state === 'unavailable'
-        ? `<p class="note">${imagery.reason === 'coverage' ? 'Não foi encontrada imagem INPE com cobertura útil completa nas cenas consultadas.' : imagery.reason === 'extent' ? 'Imagem INPE não disponível para esta abrangência. Para tentar carregá-la, use abrangência de até 1.500 m.' : 'Não foi possível carregar a imagem INPE nesta emissão.'} Croqui técnico preservado, sem fundo de imagem.</p>`
-        : '';
+    imagery?.state === 'ready' && imagery.background.provider === 'esri'
+      ? `<p class="note">Imagem de satélite: ${e(imagery.background.attribution)} (Esri World Imagery) · resolução aproximada de ${e(String(imagery.background.pixelSizeM).replace('.', ','))} m por pixel. Imagem recortada, reprojetada e reamostrada para o enquadramento UTM; data da imagem variável por região; não representa levantamento cadastral.</p>`
+      : imagery?.state === 'ready' && imagery.background.provider !== 'esri'
+        ? `<p class="note">Fonte: <a href="https://data.inpe.br/bdc/stac/v1/collections/CB4A-WPM-PCA-FUSED-1">Instituto Nacional de Pesquisas Espaciais (INPE) / CBERS-4A</a> · ${e(imagery.background.date.split('-').reverse().join('/'))} · pixel de 2 m. Imagem recortada, reprojetada e reamostrada. <a href="https://creativecommons.org/licenses/by/4.0/" style="white-space:nowrap">CC BY 4.0</a> · Cena: ${e(imagery.background.scene)}.</p>`
+        : imagery?.state === 'unavailable'
+          ? `<p class="note">${imagery.reason === 'coverage' ? 'Não foi encontrada imagem de satélite com cobertura útil para o enquadramento.' : imagery.reason === 'extent' ? 'Imagem de satélite não disponível para esta abrangência. Para tentar carregá-la, use abrangência de até 1.500 m.' : 'Não foi possível carregar a imagem de satélite nesta emissão.'} Croqui técnico preservado, sem fundo de imagem.</p>`
+          : '';
   const summary = s.holes.length > 3;
   const mapScene = renderTechnicalMap(
     s.map,

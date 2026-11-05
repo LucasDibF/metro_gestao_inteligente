@@ -7,6 +7,32 @@ export {
   INPE_LICENSE,
 } from './inpe';
 export type { InpeBackground, InpeResult } from './inpe';
+export {
+  esriMapBackground,
+  renderEsriMap,
+  esriSourceGrid,
+  esriZoom,
+  esriGroundResolution,
+  ESRI_ATTRIBUTION,
+  ESRI_TERMS,
+} from './esri';
+export type { EsriBackground, EsriResult } from './esri';
+import { esriMapBackground, type EsriResult } from './esri';
+import { inpeMapBackground, type InpeResult } from './inpe';
+export type MapImagery = EsriResult | InpeResult;
+/**
+ * Croqui background: Esri World Imagery (~0.3 m) when ESRI_MAP_ENABLED=true,
+ * falling back to INPE/CBERS-4A (2 m) when Esri has no imagery or fails.
+ */
+export async function mapBackground(
+  map: Parameters<typeof inpeMapBackground>[0],
+): Promise<MapImagery> {
+  const esri = await esriMapBackground(map);
+  if (esri.state === 'ready') return esri;
+  const inpe = await inpeMapBackground(map);
+  if (inpe.state === 'ready' || esri.state === 'disabled') return inpe;
+  return esri;
+}
 import proj4 from 'proj4';
 interface MapData {
   zone: number;

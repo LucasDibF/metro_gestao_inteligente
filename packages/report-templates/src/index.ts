@@ -77,7 +77,21 @@ export interface ReportSnapshot {
 export type MapBackground =
   | {
       state: 'ready';
-      background: { image: string; scene: string; date: string; pixelSizeM: number };
+      background:
+        | {
+            provider?: 'inpe';
+            image: string;
+            scene: string;
+            date: string;
+            pixelSizeM: number;
+          }
+        | {
+            provider: 'esri';
+            image: string;
+            zoom: number;
+            pixelSizeM: number;
+            attribution: string;
+          };
     }
   | { state: 'unavailable'; reason: 'coverage' | 'service' | 'extent' | 'busy' }
   | { state: 'disabled' };

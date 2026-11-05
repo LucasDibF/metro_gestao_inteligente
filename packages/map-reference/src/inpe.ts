@@ -5,6 +5,7 @@ import { inpeProjection, sourceGrid, type InpeMapData } from './inpe-geometry';
 export { inpeProjection, sourceGrid } from './inpe-geometry';
 export { INPE_COLLECTION, INPE_LICENSE } from './inpe-source';
 export interface InpeBackground {
+  provider?: 'inpe';
   image: string;
   scene: string;
   date: string;
@@ -166,7 +167,13 @@ export async function renderInpeMap(
         if (image)
           return {
             state: 'ready',
-            background: { image, scene: scene.id, date: scene.date, pixelSizeM: 2 },
+            background: {
+              provider: 'inpe',
+              image,
+              scene: scene.id,
+              date: scene.date,
+              pixelSizeM: 2,
+            },
           };
       } catch {
         failed = true;

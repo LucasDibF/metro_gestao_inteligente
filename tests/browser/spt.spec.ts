@@ -430,12 +430,14 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
     ).toBeVisible();
     await expect(
       page.getByText(
-        'Não foi encontrada imagem INPE com cobertura útil completa nas cenas consultadas.',
+        'Não foi encontrada imagem de satélite com cobertura útil para este enquadramento.',
         { exact: false },
       ),
     ).toBeVisible();
     imageryReady = true;
-    await page.getByRole('button', { name: 'Tentar carregar imagem INPE', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Tentar carregar imagem de satélite', exact: true })
+      .click();
     await expect(page.getByText('Fonte: INPE / CBERS-4A', { exact: false })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Licença CC BY 4.0', exact: true })).toBeVisible();
     const generate = page.getByRole('button', { name: 'Gerar PDF de homologação', exact: true });

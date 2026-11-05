@@ -46,7 +46,7 @@ test('INPE missing coverage keeps a truthful vector croqui, with no substituted 
   assert.deepEqual(result, { state: 'unavailable', reason: 'coverage' });
   const svg = technicalMap(map, result);
   assert.ok(!svg.includes('<image'));
-  assert.ok(svg.includes('Imagem INPE indisponível'));
+  assert.ok(svg.includes('Imagem de satélite indisponível'));
 });
 test('INPE refuses unlicensed data, foreign assets and servers that ignore byte ranges', async () => {
   for (const options of [{ unlicensed: true }, { unsafe: true }, { fullFile: true }]) {

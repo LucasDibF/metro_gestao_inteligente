@@ -1,4 +1,4 @@
-import { inpeMapBackground } from '@spt/map-reference';
+import { mapBackground } from '@spt/map-reference';
 import { validateReportLayout } from './report-preflight';
 import { PrismaClient } from '@prisma/client';
 import { chromium } from 'playwright';
@@ -137,7 +137,7 @@ export async function processNextReport(
       '0.8.1',
       '0.8.0',
     ].includes(snapshot.templateVersion)
-      ? await inpeMapBackground(snapshot.map)
+      ? await mapBackground(snapshot.map)
       : undefined;
     await page.setContent(renderReport(snapshot, photos, imagery), {
       waitUntil: 'load',
