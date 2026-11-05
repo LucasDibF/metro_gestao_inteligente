@@ -9,6 +9,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { AppModule } from '../../apps/api/src/app.module';
 import { configureHttp } from '../../apps/api/src/operations/http-setup';
 import { clientFailure } from '../../apps/api/src/operations/http-observability';
+import { assertTestDatabase } from '../helpers/test-database';
 
 async function server(hops: string | undefined) {
   const saved = process.env.TRUST_PROXY_HOPS;
@@ -84,7 +85,7 @@ test('real database failures arrive as the classes and codes the filter maps', a
   const [target] = await admin.$queryRaw<
     Array<{ name: string }>
   >`SELECT current_database() AS name`;
-  assert.match(target.name, /_test$/, 'Test database required');
+  assertTestDatabase(target.name);
   const tenant = await admin.tenant.create({ data: { name: 'Failures ' + randomUUID() } });
   const failure = async (operation: () => Promise<unknown>) => {
     const error = await operation().then(

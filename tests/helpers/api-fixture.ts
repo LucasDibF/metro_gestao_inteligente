@@ -8,6 +8,7 @@ import { PrivateStorage } from '@spt/private-storage';
 import sharp from 'sharp';
 import { AppModule } from '../../apps/api/src/app.module';
 import { hashPassword } from '../../apps/api/src/auth/password';
+import { assertTestDatabase } from './test-database';
 
 export interface FixtureUser {
   id: string;
@@ -54,7 +55,7 @@ export async function apiFixture(
     adapter: new PrismaPg({ connectionString: process.env.MIGRATION_DATABASE_URL }),
   });
   const [target] = await db.$queryRaw<Array<{ name: string }>>`SELECT current_database() AS name`;
-  assert.match(target.name, /_test$/, 'Test database required');
+  assertTestDatabase(target.name);
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger: ['error'] });
   app.setGlobalPrefix('api/v1');
   configure?.(app);

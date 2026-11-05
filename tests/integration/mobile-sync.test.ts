@@ -9,13 +9,14 @@ import sharp from 'sharp';
 import { AppModule } from '../../apps/api/src/app.module';
 import { hashPassword } from '../../apps/api/src/auth/password';
 import { PrivateStorage } from '@spt/private-storage';
+import { assertTestDatabase } from '../helpers/test-database';
 
 test('mobile sync is atomic, idempotent, versioned and assignment-only; partial completion reaches technical review', async () => {
   const db = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.MIGRATION_DATABASE_URL }),
   });
   const [target] = await db.$queryRaw<Array<{ name: string }>>`SELECT current_database() AS name`;
-  assert.match(target.name, /_test$/, 'Test database required');
+  assertTestDatabase(target.name);
   const app = await NestFactory.create(AppModule, { logger: ['error'] });
   app.setGlobalPrefix('api/v1');
   const tenant = await db.tenant.create({ data: { name: 'Disposable mobile sync QA' } });
