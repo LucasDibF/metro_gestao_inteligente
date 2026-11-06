@@ -13,3 +13,10 @@ work
 apps/mobile
 graphify-out
 load-test-results
+# Local agent workspace, instructions and worktrees: never part of the image.
+agentes
+AGENTS.md
+CLAUDE.md
+apps/mobile/AGENTS.md
+.claude
+.codex
