@@ -1,6 +1,3 @@
-import { reportCompany } from './report-identity';
-import { reportSoilDescription } from './report-soil-description';
-import { SOIL_STATE_RULE_VERSION } from '@spt/geotechnical-engine';
 import {
   BadRequestException,
   ConflictException,
@@ -9,11 +6,12 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { validateReportEligibility } from './report-eligibility';
 import { googleMapReference, inpeMapBackground } from '@spt/map-reference';
 import { Prisma, Report } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import { parseMapView, reportMap, MapView } from './report-map';
+import { compositionJson, readComposition } from './report-composition';
+import { issueSnapshot } from './report-issue-snapshot';
+import { parseMapView, reportMap } from './report-map';
 import {
   IssuedPdf,
   ReportHistoryRows,
@@ -23,12 +21,7 @@ import {
   issueSelect,
   reportBoreholeSelect,
 } from './report-rows';
-import {
-  ReportSnapshot,
-  TEMPLATE_VERSION,
-  canonicalJson,
-  technicalMap,
-} from '@spt/report-templates';
+import { canonicalJson, technicalMap } from '@spt/report-templates';
 import { isUuid } from '../common/uuid';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
 import { lockWork, readWork } from '../works/work-lock';
@@ -112,7 +105,8 @@ export class ReportsService {
       notes = v.notes === '' ? '' : text(v.notes, 4000),
       holeIds = this.ids(v.holeIds, 20, true),
       photoIds = this.ids(v.photoIds, 40);
-    if (typeof v.showOtherBoreholes !== 'boolean')
+    const showOtherBoreholes = v.showOtherBoreholes;
+    if (typeof showOtherBoreholes !== 'boolean')
       throw new BadRequestException('Map option required');
     const version = id ? expectedVersion(v.version) : undefined;
     return this.db.run(c, async (tx) => {
@@ -136,8 +130,7 @@ export class ReportsService {
       )
         throw new NotFoundException('Selected photo unavailable');
       const existing = id ? await this.parent(tx, c, workId, id) : null;
-      const previousComposition = existing?.composition as
-        { holeIds: string[]; mapView?: MapView } | undefined;
+      const previousComposition = existing ? readComposition(existing.composition) : undefined;
       const mapView =
         previousComposition && canonicalJson(previousComposition.holeIds) === canonicalJson(holeIds)
           ? previousComposition.mapView
@@ -145,12 +138,12 @@ export class ReportsService {
       const data = {
         title,
         notes,
-        composition: {
+        composition: compositionJson({
           holeIds,
           photoIds,
-          showOtherBoreholes: v.showOtherBoreholes,
+          showOtherBoreholes,
           ...(mapView ? { mapView } : {}),
-        } as Prisma.InputJsonObject,
+        }),
       };
       if (!id) {
         if ((await tx.report.count({ where })) >= 100)
@@ -177,7 +170,7 @@ export class ReportsService {
           where: {
             tenantId: c.tenantId,
             workId,
-            id: { in: (report.composition as { holeIds: string[] }).holeIds },
+            id: { in: readComposition(report.composition).holeIds },
             deletedAt: null,
           },
           select: reportBoreholeSelect,
@@ -223,99 +216,14 @@ export class ReportsService {
         })) >= 50
       )
         throw new ConflictException({ code: 'QUEUE_LIMIT', message: 'Too many pending jobs' });
-      const composition = report.composition as {
-        holeIds: string[];
-        photoIds: string[];
-        showOtherBoreholes: boolean;
-      };
-      const holes = await tx.borehole.findMany({
-        where: { tenantId: c.tenantId, workId, id: { in: composition.holeIds }, deletedAt: null },
-        include: {
-          sptTests: { orderBy: { depthM: 'asc' } },
-          soilLayers: { orderBy: { fromM: 'asc' } },
-          coordinates: true,
-        },
-      });
-      validateReportEligibility(holes, composition.holeIds.length);
-      if (holes.reduce((n, h) => n + h.sptTests.length + h.soilLayers.length, 0) > 1000)
-        throw new BadRequestException('Report size limit exceeded');
-      const photoRecords = await tx.boreholePhoto.findMany({
-        where: {
-          tenantId: c.tenantId,
-          workId,
-          id: { in: composition.photoIds },
-          processingState: 'READY',
-          boreholeId: { in: composition.holeIds },
-          deletedAt: null,
-        },
-      });
-      if (photoRecords.length !== composition.photoIds.length)
-        throw new NotFoundException('Selected photos unavailable');
-      const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: c.tenantId } }),
-        work = await tx.work.findUniqueOrThrow({ where: { id: workId } });
-      const ordered = composition.holeIds.map((id) => holes.find((h) => h.id === id)!);
-      const map = (await reportMap(
+      const snapshot = await issueSnapshot(
         tx,
         c,
         workId,
-        composition.holeIds,
-        composition.showOtherBoreholes,
-        (composition as typeof composition & { mapView?: MapView }).mapView,
-      ))!;
-      const snapshot: ReportSnapshot = {
-        schemaVersion: 1,
-        soilStateRuleVersion: SOIL_STATE_RULE_VERSION,
-        templateVersion: TEMPLATE_VERSION,
-        createdAt: new Date().toISOString(),
-        issueNumber: report.issueCounter + 1,
-        tenant: reportCompany(tenant),
-        work: {
-          id: work.id,
-          name: work.name,
-          clientName: work.clientName,
-          city: work.city,
-          state: work.state,
-          address: work.address,
-        },
-        report: { id, title: report.title, notes: report.notes, version },
-        holes: ordered.map((h) => ({
-          id: h.id,
-          code: h.code,
-          technicalVersion: h.technicalVersion,
-          executedDepthM: String(h.executedDepthM),
-          waterLevelM: h.waterLevelM === null ? null : String(h.waterLevelM),
-          fieldDate: h.fieldDate!.toISOString(),
-          reviewerName: h.reviewerName!,
-          reviewerRegistration: h.reviewerRegistration!,
-          reviewedAt: h.reviewedAt!.toISOString(),
-          reviewNote: h.reviewNote,
-          officialCoordinate: JSON.parse(
-            JSON.stringify(h.coordinates.find((c) => c.id === h.officialCoordinateId)),
-          ),
-          tests: JSON.parse(JSON.stringify(h.sptTests)),
-          layers: JSON.parse(
-            JSON.stringify(
-              h.soilLayers.map((layer) => ({
-                ...layer,
-                description: reportSoilDescription(layer),
-              })),
-            ),
-          ),
-        })),
-        photos: composition.photoIds.map((id) => {
-          const p = photoRecords.find((v) => v.id === id)!;
-          return {
-            id: p.id,
-            boreholeId: p.boreholeId,
-            caption: p.caption,
-            objectKey: p.objectKey,
-            sha256: p.sha256,
-            version: p.version,
-            crop: p.crop as ReportSnapshot['photos'][number]['crop'],
-          };
-        }),
-        map,
-      };
+        report,
+        readComposition(report.composition),
+        version,
+      );
       const frozen = JSON.stringify(snapshot);
       const issue = await tx.reportIssue.create({
         data: {
@@ -337,11 +245,7 @@ export class ReportsService {
   async map(c: TenantContext, workId: string, id: string): Promise<ReportMapPreviewRows> {
     const result = await this.db.run(c, async (tx) => {
       const report = await this.visibleReport(tx, c, workId, id),
-        composition = report.composition as {
-          holeIds: string[];
-          showOtherBoreholes: boolean;
-          mapView?: MapView;
-        };
+        composition = readComposition(report.composition);
       const map = await reportMap(
         tx,
         c,
@@ -380,21 +284,17 @@ export class ReportsService {
       const report = await this.parent(tx, c, workId, id);
       if (report.version !== version)
         throw new ConflictException({ code: 'RECORD_VERSION_CONFLICT', message: 'Report changed' });
-      const composition = report.composition as {
-        holeIds: string[];
-        photoIds: string[];
-        showOtherBoreholes: boolean;
-        mapView?: MapView;
-      };
-      await reportMap(tx, c, workId, composition.holeIds, composition.showOtherBoreholes, view);
-      const updated = { ...composition } as typeof composition & { mapBase?: unknown };
-      delete updated.mapBase;
-      if (view) updated.mapView = view;
-      else delete updated.mapView;
+      const { holeIds, photoIds, showOtherBoreholes } = readComposition(report.composition);
+      await reportMap(tx, c, workId, holeIds, showOtherBoreholes, view);
       return tx.report.update({
         where: { id },
         data: {
-          composition: updated as unknown as Prisma.InputJsonObject,
+          composition: compositionJson({
+            holeIds,
+            photoIds,
+            showOtherBoreholes,
+            ...(view ? { mapView: view } : {}),
+          }),
           version: { increment: 1 },
           currentIssueId: null,
         },
