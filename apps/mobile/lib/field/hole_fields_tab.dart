@@ -95,9 +95,9 @@ class HoleFieldsTab extends StatelessWidget {
                   MetroFact(label: 'N', value: '${coordinate['northingM']}'),
                   Text(
                     'SIRGAS 2000',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: MetroColors.muted),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: context.metro.muted,
+                    ),
                   ),
                 ],
                 if (draft)

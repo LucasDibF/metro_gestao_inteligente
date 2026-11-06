@@ -67,6 +67,8 @@ class _MetroAppState extends State<MetroApp> {
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
     debugShowCheckedModeBanner: false,
     theme: metroTheme(),
+    darkTheme: metroTheme(brightness: Brightness.dark),
+    themeMode: ThemeMode.system,
     // Layouts are verified up to 200%; the system may offer larger sizes.
     builder: (context, child) => MediaQuery.withClampedTextScaling(
       maxScaleFactor: metroMaxTextScale,

@@ -103,7 +103,7 @@ class _WorksScreenState extends State<WorksScreen> {
         '${widget.session.profile!.company} · Sondador',
         style: Theme.of(
           context,
-        ).textTheme.bodyMedium?.copyWith(color: MetroColors.muted),
+        ).textTheme.bodyMedium?.copyWith(color: context.metro.muted),
       ),
       const SizedBox(height: MetroSpace.md),
       if (_recoveryMessage != null) ...[

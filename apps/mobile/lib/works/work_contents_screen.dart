@@ -149,7 +149,7 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
         horizontal: MetroSpace.lg,
         vertical: MetroSpace.xs,
       ),
-      leading: const Icon(Icons.folder_outlined, color: MetroColors.muted),
+      leading: Icon(Icons.folder_outlined, color: context.metro.muted),
       title: Text(
         row['name'] as String,
         style: Theme.of(context).textTheme.titleMedium,

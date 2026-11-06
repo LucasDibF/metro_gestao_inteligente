@@ -150,9 +150,9 @@ class MetroActionLayout extends StatelessWidget {
           ),
           if (docked)
             DecoratedBox(
-              decoration: const BoxDecoration(
-                color: MetroColors.surface,
-                border: Border(top: BorderSide(color: MetroColors.line)),
+              decoration: BoxDecoration(
+                color: context.metro.surface,
+                border: Border(top: BorderSide(color: context.metro.line)),
               ),
               child: SafeArea(
                 top: false,

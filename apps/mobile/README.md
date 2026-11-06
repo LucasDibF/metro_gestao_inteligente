@@ -36,7 +36,7 @@ Umidade não é acrescentada automaticamente à descrição do PDF. Recuperaçã
 | `lib/field/photo_recovery.dart` | Arquivos duráveis e recuperação de câmera Android |
 | `lib/field/hole_screen.dart` | Estado e navegação do furo; `hole_*_tab.dart` são as quatro seções, `hole_section_nav.dart` a barra ou trilho, `hole_status_strip.dart` o estado de sincronização |
 | `lib/field/field_export.dart` | Cópia assistida dos dados pendentes |
-| `lib/ui/metro_theme.dart` | Cores, espaçamentos, raios, alvos de toque e tema |
+| `lib/ui/metro_theme.dart` | Paleta clara e escura, fontes, animações, espaçamentos, raios, alvos de toque e tema |
 | `lib/ui/metro_layout.dart` | Larguras de conteúdo, colunas adaptativas e ação principal fixa |
 | `lib/ui/metro_widgets.dart` | Avisos, estados vazios e de falha, linhas, painéis e campos com rótulo |
 
@@ -44,7 +44,7 @@ São usados componentes Flutter e ChangeNotifier. Sem infraestrutura adicional d
 
 ## Layout
 
-Cores e tamanhos vêm do tema; as telas não repetem valores. Botão principal com 56 pt, secundário com 52 pt e mínimo de 48 pt. Rótulos ficam acima dos campos, para quebrar linha com texto ampliado.
+Cores, fontes e tamanhos vêm do tema; as telas não repetem valores. Botão principal com 56 pt, secundário com 52 pt e mínimo de 48 pt. Rótulos ficam acima dos campos, para quebrar linha com texto ampliado.
 
 - As seções do furo ficam na base no telefone e passam a um trilho lateral a partir de 600 pt de largura, o que inclui telefone em paisagem.
 - A ação principal fica fixa ao alcance do polegar. Em janela baixa (teclado aberto, paisagem, texto ampliado), passa ao fim da rolagem.
@@ -52,7 +52,11 @@ Cores e tamanhos vêm do tema; as telas não repetem valores. Botão principal c
 - O texto do sistema é limitado a 200%. Rótulos da navegação param em 130% e encolhem para caber, como nas barras do sistema.
 - Formulários não usam lista preguiçosa: `Form` só valida campos montados.
 
-A aparência usa a fonte do sistema. As fontes do web não são incorporadas ao app.
+A aparência segue o web. Títulos usam Fraunces 600, texto e controles IBM Plex Sans e dados copiáveis IBM Plex Mono, embutidas em `assets/fonts` (instâncias estáticas do Google Fonts, SIL OFL 1.1). O login usa a marca do web, convertida de SVG para PNG em `assets/brand`.
+
+As cores vêm dos tokens de `apps/web/src/styles/theme.css` e `brand.css`, em `MetroPalette` (`lib/ui/metro_theme.dart`), com tema claro e escuro conforme o aparelho. No claro, texto secundário, borda de campo e aviso positivo ficam mais escuros que no web, para manter 4,5:1 (3:1 na borda) sob sol; no escuro, texto e ícones da marca usam o lilás claro do web. As telas leem as cores por `context.metro`, nunca por valores fixos.
+
+As animações têm o ritmo do web (`MetroMotion`): troca de cor em 150 ms, recolhimento em 200 ms, entrada em 300 ms com a curva `cubic-bezier(0.16, 1, 0.3, 1)` e saída em 200 ms. Telas entram deslizando com fade, avisos surgem com fade e leve subida, e o estado de sincronização troca com transição. O toque muda a cor, sem ondulação. Com redução de movimento ativada no sistema, nada é animado.
 
 ## Persistência e sincronização
 

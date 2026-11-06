@@ -20,46 +20,73 @@ class MetroNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final (surface, foreground, fallbackIcon) = switch (tone) {
       MetroNoticeTone.info => (
-        MetroColors.subtle,
-        MetroColors.ink,
+        context.metro.subtle,
+        context.metro.ink,
         Icons.info_outline,
       ),
       MetroNoticeTone.success => (
-        MetroColors.noticeSurface,
-        MetroColors.noticeText,
+        context.metro.noticeSurface,
+        context.metro.noticeText,
         Icons.check_circle_outline,
       ),
       MetroNoticeTone.error => (
-        MetroColors.errorSurface,
-        MetroColors.errorText,
+        context.metro.errorSurface,
+        context.metro.errorText,
         Icons.error_outline,
       ),
     };
-    return Semantics(
-      liveRegion: true,
-      container: true,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: BorderRadius.circular(MetroRadius.alert),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(MetroSpace.md),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: MetroSpace.sm,
-            children: [
-              Icon(icon ?? fallbackIcon, size: 20, color: foreground),
-              Expanded(
-                child: Text(
-                  message,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: foreground),
-                ),
-              ),
-            ],
+    return MetroReveal(
+      child: Semantics(
+        liveRegion: true,
+        container: true,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(MetroRadius.alert),
           ),
+          child: Padding(
+            padding: const EdgeInsets.all(MetroSpace.md),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: MetroSpace.sm,
+              children: [
+                Icon(icon ?? fallbackIcon, size: 20, color: foreground),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: foreground),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Plays the web entrance once when [child] first appears: fade and a short
+/// rise over 300 ms on the ease-out-expo curve, or nothing under reduced motion.
+class MetroReveal extends StatelessWidget {
+  const MetroReveal({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MetroMotion.reduced(context)) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: MetroMotion.enter,
+      curve: MetroMotion.enterCurve,
+      child: child,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, (1 - t) * 8),
+          child: child,
         ),
       ),
     );
@@ -99,7 +126,7 @@ class MetroStateView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: MetroSpace.lg,
             children: [
-              Icon(icon, size: 32, color: MetroColors.muted),
+              Icon(icon, size: 32, color: context.metro.muted),
               Text(message, textAlign: TextAlign.center),
               if (actionLabel != null)
                 FilledButton(onPressed: onAction, child: Text(actionLabel!)),
@@ -127,7 +154,7 @@ class MetroSectionTitle extends StatelessWidget {
         if (supporting != null)
           Text(
             supporting!,
-            style: text.bodyMedium?.copyWith(color: MetroColors.muted),
+            style: text.bodyMedium?.copyWith(color: context.metro.muted),
           ),
       ],
     );
@@ -143,9 +170,9 @@ class MetroPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      color: MetroColors.surface,
+      color: context.metro.surface,
       borderRadius: BorderRadius.circular(MetroRadius.panel),
-      border: Border.all(color: MetroColors.line),
+      border: Border.all(color: context.metro.line),
     ),
     child: ClipRRect(
       borderRadius: BorderRadius.circular(MetroRadius.panel),
@@ -187,7 +214,7 @@ class MetroRow extends StatelessWidget {
             spacing: MetroSpace.md,
             children: [
               if (leading != null)
-                Icon(leading, size: 24, color: MetroColors.muted),
+                Icon(leading, size: 24, color: context.metro.muted),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,14 +226,14 @@ class MetroRow extends StatelessWidget {
                       Text(
                         line,
                         style: text.bodyMedium?.copyWith(
-                          color: MetroColors.muted,
+                          color: context.metro.muted,
                         ),
                       ),
                   ],
                 ),
               ),
               if (trailing != null)
-                Icon(trailing, size: 24, color: MetroColors.muted),
+                Icon(trailing, size: 24, color: context.metro.muted),
             ],
           ),
         ),
@@ -267,7 +294,7 @@ class MetroFact extends StatelessWidget {
           label,
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: MetroColors.muted),
+          ).textTheme.bodyMedium?.copyWith(color: context.metro.muted),
         ),
         Text(
           value,
