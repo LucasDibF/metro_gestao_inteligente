@@ -1,12 +1,12 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { jwtVerify, SignJWT } from 'jose';
+import { isUuid } from '../common/uuid';
 
 export interface Identity {
   userId: string;
   tenantId: string;
   sessionId: string;
 }
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 @Injectable()
 export class TokenService {
   private readonly key: Uint8Array;
@@ -36,11 +36,7 @@ export class TokenService {
         requiredClaims: ['sub', 'tenant', 'sid', 'iat', 'exp'],
         maxTokenAge: '15m',
       });
-      if (
-        ![payload.sub, payload.tenant, payload.sid].every(
-          (value) => typeof value === 'string' && uuid.test(value),
-        )
-      )
+      if (![payload.sub, payload.tenant, payload.sid].every((value) => isUuid(value)))
         throw new Error();
       return {
         userId: payload.sub!,

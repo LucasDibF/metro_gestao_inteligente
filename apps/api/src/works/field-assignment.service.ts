@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import { TenantDatabaseService, type TenantContext } from '../database/tenant-database.service';
+import { isUuid } from '../common/uuid';
 import { technicalInput } from '../technical/technical-input';
 import { lockWork, readWork } from './work-lock';
 @Injectable()
@@ -20,11 +21,7 @@ export class FieldAssignmentService {
   save(c: TenantContext, workId: string, body: unknown) {
     const input = technicalInput(body, ['operatorId', 'version']);
     if (
-      (input.operatorId !== null &&
-        (typeof input.operatorId !== 'string' ||
-          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-            input.operatorId,
-          ))) ||
+      (input.operatorId !== null && !isUuid(input.operatorId)) ||
       !Number.isSafeInteger(input.version) ||
       Number(input.version) < 0
     )

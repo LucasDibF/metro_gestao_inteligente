@@ -17,6 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { AuthRequest } from '../auth/auth.guard';
+import { isUuid } from '../common/uuid';
 import { requireFieldWrite } from '../auth/field-access';
 import { Roles } from '../auth/roles.guard';
 import { TenantDatabaseService, TenantContext } from '../database/tenant-database.service';
@@ -26,7 +27,6 @@ import { parseSpt } from '../spt/spt-input';
 import { FilesService } from '../files/files.service';
 import { technicalInput } from '../technical/technical-input';
 
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 @Roles('OPERATOR')
 @Controller('obras/:workId/furos/:boreholeId/mobile')
 export class MobileSyncController {
@@ -47,8 +47,7 @@ export class MobileSyncController {
       throw new NotFoundException('Work unavailable');
   }
   private requestHash(id: unknown, request: unknown): string {
-    if (typeof id !== 'string' || !uuid.test(id))
-      throw new BadRequestException('Invalid operation ID');
+    if (!isUuid(id)) throw new BadRequestException('Invalid operation ID');
     return createHash('sha256').update(JSON.stringify(request)).digest('hex');
   }
   private async previousResponse(
@@ -140,7 +139,7 @@ export class MobileSyncController {
       'recordId',
       'expectedTechnicalVersion',
     ]);
-    if (v.recordId !== undefined && (typeof v.recordId !== 'string' || !uuid.test(v.recordId)))
+    if (v.recordId !== undefined && !isUuid(v.recordId))
       throw new BadRequestException('Invalid record ID');
     return this.receipt(r.identity, w, b, v.operationId, v, async (tx) => {
       const current = await this.technical.parent(tx, r.identity, w, b);

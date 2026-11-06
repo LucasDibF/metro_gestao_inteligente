@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { optionalText } from '../technical/technical-input';
+import { isUuid } from '../common/uuid';
 import { requireFieldWrite } from '../auth/field-access';
 import {
   BadRequestException,
@@ -140,11 +141,7 @@ export class FilesService implements OnApplicationShutdown {
   official(c: TenantContext, workId: string, boreholeId: string, body: unknown) {
     const v = technicalInput(body, ['coordinateId', 'technicalVersion']);
     const version = expectedVersion(v.technicalVersion);
-    if (
-      typeof v.coordinateId !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.coordinateId)
-    )
-      throw new BadRequestException('Coordinate required');
+    if (!isUuid(v.coordinateId)) throw new BadRequestException('Coordinate required');
     return this.db.run(c, async (tx) => {
       const hole = await this.technical.parent(tx, c, workId, boreholeId);
       await requireFieldWrite(tx, c, hole.reviewState, workId);

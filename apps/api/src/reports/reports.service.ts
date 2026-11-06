@@ -20,11 +20,11 @@ import {
   canonicalJson,
   technicalMap,
 } from '@spt/report-templates';
+import { isUuid } from '../common/uuid';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
 import { lockWork, readWork } from '../works/work-lock';
 import { privateStorage } from '../files/shared-storage';
 import { expectedVersion, technicalInput, text } from '../technical/technical-input';
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 export const issueSelect = {
   id: true,
@@ -97,7 +97,7 @@ export class ReportsService {
       !Array.isArray(value) ||
       value.length > max ||
       (required && !value.length) ||
-      value.some((v) => typeof v !== 'string' || !uuid.test(v)) ||
+      value.some((v) => !isUuid(v)) ||
       new Set(value).size !== value.length
     )
       throw new BadRequestException('Invalid selected records');
@@ -205,8 +205,7 @@ export class ReportsService {
   issue(c: TenantContext, workId: string, id: string, body: unknown) {
     const v = technicalInput(body, ['version', 'idempotencyKey']),
       version = expectedVersion(v.version);
-    if (typeof v.idempotencyKey !== 'string' || !uuid.test(v.idempotencyKey))
-      throw new BadRequestException('Idempotency key must be UUID');
+    if (!isUuid(v.idempotencyKey)) throw new BadRequestException('Idempotency key must be UUID');
     const idempotencyKey = v.idempotencyKey,
       requestHash = hash(JSON.stringify({ version }));
     return this.db.run(c, async (tx) => {

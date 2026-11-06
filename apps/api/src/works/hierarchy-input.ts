@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { object } from '../auth/auth-input';
+import { isUuid } from '../common/uuid';
 export function hierarchyInput(body: unknown, borehole: boolean, editing: boolean) {
   const input = object(body);
   const allowed = new Set([
@@ -17,12 +18,7 @@ export function hierarchyInput(body: unknown, borehole: boolean, editing: boolea
   if (normalized.length > (borehole ? 60 : 120))
     throw new BadRequestException('Invalid name or code');
   const folderId = input.folderId ?? null;
-  if (
-    borehole &&
-    folderId !== null &&
-    (typeof folderId !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(folderId))
-  )
+  if (borehole && folderId !== null && !isUuid(folderId))
     throw new BadRequestException('Invalid folder');
   const depth = input.plannedDepthM ?? null;
   if (
