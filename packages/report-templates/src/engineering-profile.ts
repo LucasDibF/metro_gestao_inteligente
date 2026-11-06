@@ -8,6 +8,7 @@ import {
 import type { ReportSnapshot } from './types';
 import { escapeHtml as e } from './html';
 import { numeric as n, sheetHeader, sheetFooter } from './sheet-layout';
+import { missingFieldLabels, missingFieldValue } from './missing-field';
 type Hole = ReportSnapshot['holes'][number];
 export function advanceLabel(a: { blows: number; penetrationMm: number } | undefined) {
   return !a
@@ -200,6 +201,11 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
     const y = (d: number) => top + ((d - from) / 20) * height;
     const text = (x: number, y: number, v: unknown, anchor = 'middle', extra = '') =>
       `<text x="${x}" y="${y}" text-anchor="${anchor}" ${extra}>${e(v)}</text>`;
+    // Missing data prints "NI" up to 0.8.16; from 0.8.17 the field stays blank.
+    const missing = missingFieldValue(s.templateVersion);
+    const fields = (...labels: string[]) => missingFieldLabels(s.templateVersion, labels);
+    const valueText = (x: number, y: number, v: string, anchor = 'middle', extra = '') =>
+      v ? text(x, y, v, anchor, extra) : '';
     const tests = [...h.tests].sort((a, b) => Number(a.depthM) - Number(b.depthM));
     // Boundary records belong to the preceding sheet; only the first includes zero.
     const inWindow = (depth: number) => (page === 0 ? depth >= from : depth > from) && depth <= to;
@@ -309,7 +315,7 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
  ]
    .map(([x, v]) => text(Number(x), 42, v, 'middle', `transform="rotate(-90 ${x} 42)"`))
    .join('')}
- ${text(208, 14, 'PESO: NI · QUEDA: NI', 'middle', 'font-size="9"')}${text(208, 28, 'REVESTIMENTO (DIÂMETRO): NI', 'middle', 'font-size="9"')}${text(208, 42, 'AMOSTRADOR / Ø INT. / Ø EXT.: NI', 'middle', 'font-size="9"')}${text(208, 68, 'CLASSIFICAÇÃO DAS CAMADAS', 'middle', 'font-size="9.5" font-weight="bold"')}
+ ${text(208, 14, fields('PESO', 'QUEDA'), 'middle', 'font-size="9"')}${text(208, 28, fields('REVESTIMENTO (DIÂMETRO)'), 'middle', 'font-size="9"')}${text(208, 42, fields('AMOSTRADOR / Ø INT. / Ø EXT.'), 'middle', 'font-size="9"')}${text(208, 68, 'CLASSIFICAÇÃO DAS CAMADAS', 'middle', 'font-size="9.5" font-weight="bold"')}
  ${text(403, 16, 'RESISTÊNCIA À', 'middle', 'font-size="10" font-weight="bold"')}${text(403, 30, 'PENETRAÇÃO — N', 'middle', 'font-size="10" font-weight="bold"')}${text(403, 48, 'GOLPES / 30 cm', 'middle', 'font-size="9.5"')}${text(556, 17, 'ENSAIO SPT', 'middle', 'font-size="10" font-weight="bold"')}${text(556, 34, 'GOLPES / PENETRAÇÃO', 'middle', 'font-size="9.5"')}${text(672, 42, 'NÍVEL D’ÁGUA (m)', 'middle', 'transform="rotate(-90 672 42)"')}
  ${[
    [491, '1º'],
@@ -344,8 +350,9 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
    .map((depth) => {
      const label =
        h.officialCoordinate.altitudeM === null
-         ? 'NI'
+         ? missing
          : n(Number(h.officialCoordinate.altitudeM) - displayDepth(depth));
+     if (!label) return '';
      const size = Math.min(9.5, (25 / measureText(label)) * 10);
      return text(
        14,
@@ -437,7 +444,7 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
      : ''
  }
 
- ${text(646, top + 25, 'NI')}${
+ ${valueText(646, top + 25, missing)}${
    templateSince(s.templateVersion, '0.8.1') && visible.some((t) => t.fieldDetails?.executionMethod)
      ? visible
          .map((t) => {
@@ -447,8 +454,8 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
                  string,
                  string
                >
-             )[t.fieldDetails?.executionMethod ?? ''] ?? 'NI';
-           return text(
+             )[t.fieldDetails?.executionMethod ?? ''] ?? missing;
+           return valueText(
              704,
              Math.min(bottom - 4, Math.max(top + 9, y(Number(t.depthM)) - 5)),
              label,
@@ -457,7 +464,7 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
            );
          })
          .join('')
-     : text(704, top + 25, 'NI')
+     : valueText(704, top + 25, missing)
  }
 
  <rect class="profile-frame" x=".6" y=".6" width="718.8" height="${bottom - 0.6}" fill="none" stroke="#666" stroke-width="1.1"/>
@@ -490,7 +497,7 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
       visible.some((t) => t.result.nSpt === null && t.advances.length > 0)
         ? 'Metros sem N-SPT definido aparecem na curva com a leitura medida, que não é N-SPT. '
         : '';
-    const body = `${header(`Perfil individual · ${from}–${to} m · Trecho ${page + 1}/${pageCount}`)}<table class="excel-meta"><tr><td colspan="2"><b>Coordenadas UTM:</b> ${options.coordinateMissing ? 'Não informadas' : `E ${n(h.officialCoordinate.eastingM)} · N ${n(h.officialCoordinate.northingM)} · ${h.officialCoordinate.zone}${e(h.officialCoordinate.hemisphere)} · ${e(h.officialCoordinate.datum)}`}</td><td>Início: NI · Término: NI</td></tr><tr><td>Tipologia: NI · Km: NI · Lote: NI</td><td>Posição / eixo: NI · Desloc.: NI</td><td>Fiscal: NI</td></tr></table>${svg}${supplementNotice}<table class="excel-limit"><tr><td style="width:30%"><b>Limite:</b> ${n(termination.depth)} m</td><td><b>Motivo da paralisação:</b> ${stopReason}</td></tr></table><div class="excel-bottom"><table><thead><tr><th colspan="3">PROFUNDIDADE DO NÍVEL D’ÁGUA</th></tr><tr><th>Leitura</th><th>Data / hora</th><th>Prof. (m)</th></tr></thead><tbody><tr><td>Cadastrada*</td><td>NI</td><td>${h.waterLevelM === null ? 'NI' : n(h.waterLevelM)}</td></tr><tr><td>Inicial</td><td>NI</td><td>NI</td></tr><tr><td>Após 12/24 h</td><td>NI</td><td>NI</td></tr></tbody></table><div class="excel-legend"><b>LEGENDA / AVANÇOS</b><p><span style="color:#2155b5">– – 30 cm iniciais</span><br><span style="color:${coloredSums ? finalColor : '#b95600'}">— 30 cm finais (N-SPT)</span><br>Trado: NI · Lavagem: NI<br>Prof. revestimento: NI</p></div><table><thead><tr><th colspan="2">LAVAGEM POR TEMPO (30 min)</th></tr><tr><th>Tempo</th><th>Avanço (cm)</th></tr></thead><tbody>${['0 a 10 min', '10 a 20 min', '20 a 30 min'].map((t) => `<tr><td>${t}</td><td>NI</td></tr>`).join('')}</tbody></table></div><p class="excel-note">* Nível d’água cadastrado: ${water}. O cadastro atual não identifica o momento da leitura.</p><p class="excel-note">NI = não informado; NE = não encontrado (não inferido). SP: percussão · TC: trado concha · TH: trado helicoidal · CA: circulação de água. Avanços normais: golpes; especiais: golpes/cm. ${partialGraph && !continuousGraph ? 'Losangos: leituras parciais em golpes/cm, sem normalização.' : ''} ${templateSince(s.templateVersion, '0.8.2') ? '' : 'ND: N-SPT não definido. '}${measuredNotice}Hachuras representativas, sem indicar mineralogia ou cor real. Equipamento e conformidade normativa: não confirmados.</p>${moveObservations ? '' : observations.map((note) => `<p class="excel-note">${e(note)}</p>`).join('')}${footer()}`;
+    const body = `${header(`Perfil individual · ${from}–${to} m · Trecho ${page + 1}/${pageCount}`)}<table class="excel-meta"><tr><td colspan="2"><b>Coordenadas UTM:</b> ${options.coordinateMissing ? 'Não informadas' : `E ${n(h.officialCoordinate.eastingM)} · N ${n(h.officialCoordinate.northingM)} · ${h.officialCoordinate.zone}${e(h.officialCoordinate.hemisphere)} · ${e(h.officialCoordinate.datum)}`}</td><td>${fields('Início', 'Término')}</td></tr><tr><td>${fields('Tipologia', 'Km', 'Lote')}</td><td>${fields('Posição / eixo', 'Desloc.')}</td><td>${fields('Fiscal')}</td></tr></table>${svg}${supplementNotice}<table class="excel-limit"><tr><td style="width:30%"><b>Limite:</b> ${n(termination.depth)} m</td><td><b>Motivo da paralisação:</b> ${stopReason}</td></tr></table><div class="excel-bottom"><table><thead><tr><th colspan="3">PROFUNDIDADE DO NÍVEL D’ÁGUA</th></tr><tr><th>Leitura</th><th>Data / hora</th><th>Prof. (m)</th></tr></thead><tbody><tr><td>Cadastrada*</td><td>${missing}</td><td>${h.waterLevelM === null ? missing : n(h.waterLevelM)}</td></tr><tr><td>Inicial</td><td>${missing}</td><td>${missing}</td></tr><tr><td>Após 12/24 h</td><td>${missing}</td><td>${missing}</td></tr></tbody></table><div class="excel-legend"><b>LEGENDA / AVANÇOS</b><p><span style="color:#2155b5">– – 30 cm iniciais</span><br><span style="color:${coloredSums ? finalColor : '#b95600'}">— 30 cm finais (N-SPT)</span><br>${fields('Trado', 'Lavagem')}<br>${fields('Prof. revestimento')}</p></div><table><thead><tr><th colspan="2">LAVAGEM POR TEMPO (30 min)</th></tr><tr><th>Tempo</th><th>Avanço (cm)</th></tr></thead><tbody>${['0 a 10 min', '10 a 20 min', '20 a 30 min'].map((t) => `<tr><td>${t}</td><td>${missing}</td></tr>`).join('')}</tbody></table></div><p class="excel-note">* Nível d’água cadastrado: ${water}. O cadastro atual não identifica o momento da leitura.</p><p class="excel-note">${missing ? 'NI = não informado; ' : ''}NE = não encontrado (não inferido). SP: percussão · TC: trado concha · TH: trado helicoidal · CA: circulação de água. Avanços normais: golpes; especiais: golpes/cm. ${partialGraph && !continuousGraph ? 'Losangos: leituras parciais em golpes/cm, sem normalização.' : ''} ${templateSince(s.templateVersion, '0.8.2') ? '' : 'ND: N-SPT não definido. '}${measuredNotice}Hachuras representativas, sem indicar mineralogia ou cor real. Equipamento e conformidade normativa: não confirmados.</p>${moveObservations ? '' : observations.map((note) => `<p class="excel-note">${e(note)}</p>`).join('')}${footer()}`;
     // Fixed line budgets make each continuation an explicit, identified sheet.
     // Full descriptions are repeated here, never truncated to the profile interval.
     const continuationLines = overflows.flatMap((l) => [

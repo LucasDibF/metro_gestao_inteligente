@@ -730,9 +730,17 @@ test('Metro identity changes branding and map palette without changing technical
   assert.ok(old.includes('Laranja: furo incluído'));
   assert.ok(old.includes('fill="#c45a16"'));
   const charts = (value: string) => value.match(/<svg[^>]*class="profile-chart"[\s\S]*?<\/svg>/g);
+  const beforeBlankFields = { ...current, templateVersion: '0.8.16' };
+  assert.deepEqual(
+    charts(engineeringProfiles(beforeBlankFields, hole)),
+    charts(engineeringProfiles(legacy, hole)),
+  );
+  // From 0.8.17 missing values are blank instead of "NI"; the rest of the chart is unchanged.
+  const withoutNi = (value: string) =>
+    value.replace(/<text [^>]*>NI<\/text>/g, '').replace(/: NI\b/g, ':');
   assert.deepEqual(
     charts(engineeringProfiles(current, hole)),
-    charts(engineeringProfiles(legacy, hole)),
+    charts(withoutNi(engineeringProfiles(legacy, hole))),
   );
 });
 
