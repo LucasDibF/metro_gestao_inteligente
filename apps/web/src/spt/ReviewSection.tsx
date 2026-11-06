@@ -1,6 +1,8 @@
-import type { FormEvent } from 'react';
+import { useEffect, type FormEvent } from 'react';
 import { CheckCheck, ClipboardCheck, Undo2, X } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { useProfessionalProfile } from '../profile/use-professional-profile';
+import { ReviewerIdentity, reviewerBlockId } from './ReviewerIdentity';
 import {
   reviewStateLabels,
   technicalEventNames,
@@ -25,6 +27,9 @@ export function ReviewSection({
   onAction,
   onToggleHistory,
   onSubmit,
+  profileRejected,
+  onOpenProfile,
+  onError,
 }: {
   data: TechnicalData;
   hidden: boolean;
@@ -36,7 +41,18 @@ export function ReviewSection({
   onAction: (action: ReviewAction | null) => void;
   onToggleHistory: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  /** The server refused the approval because the profile is missing or incomplete. */
+  profileRejected: boolean;
+  onOpenProfile?: () => void;
+  onError: (error: unknown) => void;
 }) {
+  const approvable = canReview && data.hole.reviewState === 'IN_REVIEW';
+  const reviewer = useProfessionalProfile({ enabled: approvable && !hidden, onError });
+  const { reload } = reviewer;
+  useEffect(() => {
+    if (profileRejected) reload();
+  }, [profileRejected, reload]);
+  const reviewerReady = reviewer.profile?.complete === true && !reviewer.loading;
   return (
     <section hidden={hidden} aria-labelledby="review-title">
       <h3 id="review-title">Revisão técnica</h3>
@@ -50,8 +66,17 @@ export function ReviewSection({
       </p>
       {data.hole.reviewerName ? (
         <p>
-          Responsável: {data.hole.reviewerName} · Registro: {data.hole.reviewerRegistration}
+          Responsável: {data.hole.reviewerName}
+          {data.hole.reviewerTitle ? ` · ${data.hole.reviewerTitle}` : ''} · Registro:{' '}
+          {data.hole.reviewerRegistration}
         </p>
+      ) : null}
+      {approvable && !hidden ? (
+        <ReviewerIdentity
+          state={reviewer}
+          locked={busy || Boolean(reviewAction)}
+          onOpenProfile={onOpenProfile}
+        />
       ) : null}
       {data.hole.reviewNote ? <p>{data.hole.reviewNote}</p> : null}
       {!reviewAction ? (
@@ -67,7 +92,12 @@ export function ReviewSection({
           ) : null}
           {canReview && data.hole.reviewState === 'IN_REVIEW' ? (
             <>
-              <Button icon={CheckCheck} disabled={busy} onClick={() => onAction('aprovar')}>
+              <Button
+                icon={CheckCheck}
+                disabled={busy || !reviewerReady}
+                aria-describedby={reviewerReady ? undefined : reviewerBlockId}
+                onClick={() => onAction('aprovar')}
+              >
                 Aprovar tecnicamente
               </Button>
               <Button
@@ -84,14 +114,6 @@ export function ReviewSection({
       ) : (
         <form className="panel" onSubmit={onSubmit}>
           <fieldset disabled={busy}>
-            {reviewAction === 'aprovar' ? (
-              <>
-                <label htmlFor="reviewer-name">Nome do responsável técnico</label>
-                <input id="reviewer-name" name="name" maxLength={200} required />
-                <label htmlFor="reviewer-registration">Registro profissional</label>
-                <input id="reviewer-registration" name="registration" maxLength={100} required />
-              </>
-            ) : null}
             <label htmlFor="review-note">Parecer ou observações da revisão</label>
             <textarea
               id="review-note"
@@ -103,6 +125,7 @@ export function ReviewSection({
             />
             <div className="form-actions">
               <Button
+                disabled={reviewAction === 'aprovar' && !reviewerReady}
                 icon={
                   reviewAction === 'aprovar'
                     ? CheckCheck

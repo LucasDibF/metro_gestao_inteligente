@@ -26,6 +26,8 @@ export interface TechnicalData {
     fieldDate: string | null;
     reviewerName: string | null;
     reviewerRegistration: string | null;
+    /** Copied from the approving engineer's profile, like the name and registration. */
+    reviewerTitle: string | null;
     reviewNote: string | null;
   };
   layers: Layer[];

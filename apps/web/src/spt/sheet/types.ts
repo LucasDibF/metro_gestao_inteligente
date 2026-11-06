@@ -39,6 +39,7 @@ export interface SheetData {
     reviewState: string;
     reviewerName: string | null;
     reviewerRegistration: string | null;
+    reviewerTitle: string | null;
   };
   tests: SheetTest[];
   layers: SheetLayer[];
