@@ -54,7 +54,7 @@ Cores, fontes e tamanhos vêm do tema; as telas não repetem valores. Botão pri
 
 A aparência segue o web. Títulos usam Fraunces 600, texto e controles IBM Plex Sans e dados copiáveis IBM Plex Mono, embutidas em `assets/fonts` (instâncias estáticas do Google Fonts, SIL OFL 1.1). O login usa a marca do web, convertida de SVG para PNG em `assets/brand`.
 
-As cores vêm dos tokens de `apps/web/src/styles/theme.css` e `brand.css`, em `MetroPalette` (`lib/ui/metro_theme.dart`), com tema claro e escuro conforme o aparelho. No claro, texto secundário, borda de campo e aviso positivo ficam mais escuros que no web, para manter 4,5:1 (3:1 na borda) sob sol; no escuro, texto e ícones da marca usam o lilás claro do web. As telas leem as cores por `context.metro`, nunca por valores fixos.
+As cores vêm dos tokens de `apps/web/src/styles/theme.css` e `brand.css`, em `MetroPalette` (`lib/ui/metro_theme.dart`), com tema claro e escuro conforme o aparelho. No claro, texto secundário, borda de campo e aviso positivo ficam mais escuros que no web, para manter 4,5:1 (3:1 na borda) sob sol, e o texto de erro escurece até 7:1 sobre o fundo de erro; no escuro, texto e ícones da marca usam o lilás claro do web. As telas leem as cores por `context.metro`, nunca por valores fixos.
 
 As animações têm o ritmo do web (`MetroMotion`): troca de cor em 150 ms, recolhimento em 200 ms, entrada em 300 ms com a curva `cubic-bezier(0.16, 1, 0.3, 1)` e saída em 200 ms. Telas entram deslizando com fade, avisos surgem com fade e leve subida, e o estado de sincronização troca com transição. O toque muda a cor, sem ondulação. Com redução de movimento ativada no sistema, nada é animado.
 

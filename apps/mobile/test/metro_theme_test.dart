@@ -46,6 +46,13 @@ void main() {
     });
   }
 
+  test('claro: errors keep 7:1 on their surface and 4.5:1 on the page', () {
+    const p = MetroPalette.light;
+    expect(contrast(p.errorText, p.errorSurface), greaterThanOrEqualTo(7));
+    expect(contrast(p.errorText, p.surface), greaterThanOrEqualTo(4.5));
+    expect(contrast(p.errorText, p.page), greaterThanOrEqualTo(4.5));
+  });
+
   test('the active brightness selects its palette', () {
     expect(metroTheme().extension<MetroPalette>(), MetroPalette.light);
     expect(
