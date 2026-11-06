@@ -131,8 +131,10 @@ class _WorksScreenState extends State<WorksScreen> {
         runSpacing: MetroSpace.md,
         equalHeight: true,
         children: [
-          for (final work in data.items)
+          for (final (index, work) in data.items.indexed)
             MetroPanel(
+              index: index,
+              pressable: true,
               child: MetroRow(
                 title: work.name,
                 lines: [if (work.location.isNotEmpty) work.location],

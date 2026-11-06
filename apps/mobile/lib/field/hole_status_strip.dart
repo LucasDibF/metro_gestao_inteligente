@@ -33,6 +33,16 @@ class HoleStatusStrip extends StatelessWidget {
       duration: MetroMotion.of(context, MetroMotion.collapse),
       switchInCurve: MetroMotion.enterCurve,
       switchOutCurve: MetroMotion.exitCurve,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          alignment: Alignment.centerLeft,
+          scale: Tween(begin: 0.92, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+          ),
+          child: child,
+        ),
+      ),
       layoutBuilder: (current, previous) => Stack(
         alignment: Alignment.centerLeft,
         children: [...previous, ?current],
@@ -53,7 +63,7 @@ class HoleStatusStrip extends StatelessWidget {
         minimumSize: const Size(0, MetroTarget.minimum),
       ),
       onPressed: busy ? null : onSync,
-      icon: const Icon(Icons.sync),
+      icon: MetroSpin(spinning: busy, child: const Icon(Icons.sync)),
       label: Text(busy ? 'Sincronizando…' : 'Sincronizar'),
     );
     return LayoutBuilder(

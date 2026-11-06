@@ -52,10 +52,12 @@ class HoleMetresTab extends StatelessWidget {
     return '$text${record['interruptionReason'] != null ? ' · Interrompido' : ''}';
   }
 
-  Widget _row(BuildContext context, Json record) {
+  Widget _row(BuildContext context, Json record, int index) {
     final depth = num.parse('${record['depthM']}');
     final soil = (record['soil'] as Json?)?['soilType'] ?? 'Solo não informado';
     return MetroPanel(
+      index: index,
+      pressable: draft && !busy,
       child: MetroRow(
         title: '${fieldNumber(depth - 1)}–${fieldNumber(depth)} m · $soil',
         lines: [
@@ -158,7 +160,10 @@ class HoleMetresTab extends StatelessWidget {
           spacing: MetroSpace.md,
           runSpacing: MetroSpace.sm,
           equalHeight: true,
-          children: [for (final record in records) _row(context, record)],
+          children: [
+            for (final (index, record) in records.indexed)
+              _row(context, record, index),
+          ],
         ),
       ],
     );

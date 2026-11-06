@@ -211,9 +211,11 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
               'Esta obra ainda não possui furos. Peça ao responsável para cadastrar os furos no sistema web.',
             ),
           ),
-        for (final row in rows) ...[
+        for (final (index, row) in rows.indexed) ...[
           const SizedBox(height: MetroSpace.xs),
           MetroPanel(
+            index: index,
+            pressable: !row.containsKey('children'),
             child: row.containsKey('children') ? _folder(row) : _hole(row),
           ),
           const SizedBox(height: MetroSpace.xs),

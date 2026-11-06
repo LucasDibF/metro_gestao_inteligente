@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../ui/metro_layout.dart';
+import '../ui/metro_theme.dart';
 import '../ui/metro_widgets.dart';
 import 'field_export.dart';
 import 'coordinate_form.dart';
@@ -48,7 +49,11 @@ class _HoleScreenState extends State<HoleScreen>
   @override
   void initState() {
     super.initState();
-    _sections = TabController(length: 4, vsync: this);
+    _sections = TabController(
+      length: 4,
+      vsync: this,
+      animationDuration: MetroMotion.enter,
+    );
     _start();
   }
 
