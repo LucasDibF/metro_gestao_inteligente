@@ -14,3 +14,11 @@ export function missingFieldLabels(templateVersion: string, labels: readonly str
   const value = missingFieldValue(templateVersion);
   return labels.map((label) => (value ? `${label}: ${value}` : `${label}:`)).join(' · ');
 }
+
+/**
+ * Header and cover wording for a missing value ("Não informado", "Não informada"):
+ * kept up to 0.8.16, blank from 0.8.17 so only the field label remains.
+ */
+export function missingFieldWording(templateVersion: string, legacyWording: string): string {
+  return templateSince(templateVersion, '0.8.17') ? '' : legacyWording;
+}

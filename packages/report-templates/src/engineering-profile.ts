@@ -8,7 +8,7 @@ import {
 import type { ReportSnapshot } from './types';
 import { escapeHtml as e } from './html';
 import { numeric as n, sheetHeader, sheetFooter } from './sheet-layout';
-import { missingFieldLabels, missingFieldValue } from './missing-field';
+import { missingFieldLabels, missingFieldValue, missingFieldWording } from './missing-field';
 type Hole = ReportSnapshot['holes'][number];
 export function advanceLabel(a: { blows: number; penetrationMm: number } | undefined) {
   return !a
@@ -180,7 +180,9 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
       s,
       subtitle,
       h,
-      options.fieldDateMissing ? { fieldDateLabel: 'Não informada' } : undefined,
+      options.fieldDateMissing
+        ? { fieldDateLabel: missingFieldWording(s.templateVersion, 'Não informada') }
+        : undefined,
     );
   const footer = () =>
     options.interactive

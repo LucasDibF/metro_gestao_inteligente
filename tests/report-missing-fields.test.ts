@@ -4,7 +4,9 @@ import { engineeringProfiles } from '../packages/report-templates/src/engineerin
 import {
   missingFieldLabels,
   missingFieldValue,
+  missingFieldWording,
 } from '../packages/report-templates/src/missing-field';
+import { renderReport } from '../packages/report-templates/src/index';
 import { TEMPLATE_VERSION, type ReportSnapshot } from '@spt/report-templates';
 
 type Hole = ReportSnapshot['holes'][number];
@@ -137,4 +139,88 @@ test('0.8.16 and earlier keep printing NI exactly as before', () => {
     assert.ok(html.includes(legacy), legacy);
   for (const version of ['0.4.0', '0.8.0', '0.8.15'])
     assert.ok(renderProfile(version).includes('<td>Fiscal: NI</td>'), version);
+});
+
+/** Full issue without client, city, state, address or altitude. */
+function issueWithoutWorkData(templateVersion: string): ReportSnapshot {
+  return {
+    ...snapshotFor(templateVersion),
+    schemaVersion: 1,
+    createdAt: '2026-11-06T15:00:00Z',
+    work: { id: 'work', name: 'Obra', clientName: null, address: null, city: null, state: null },
+    report: { id: 'report', title: 'Relatório', version: 1, notes: '' },
+    photos: [],
+    map: {
+      zone: 25,
+      hemisphere: 'S',
+      points: [{ code: 'SP-01', x: 500000, y: 9000000, selected: true }],
+    },
+  };
+}
+
+function fieldDatePreview(templateVersion: string): string {
+  return engineeringProfiles(snapshotFor(templateVersion), holeWithoutFieldData, {
+    interactive: true,
+    fieldDateMissing: true,
+  });
+}
+
+test('missing header and cover wording is blank from 0.8.17', () => {
+  assert.equal(missingFieldWording('0.8.17', 'Não informado'), '');
+  assert.equal(missingFieldWording('0.8.16', 'Não informado'), 'Não informado');
+});
+
+test('0.8.17 header and cover keep their labels and print no "não informado"', () => {
+  const html = renderReport(issueWithoutWorkData('0.8.17'));
+  for (const label of [
+    '<td><b>Cliente:</b> </td>',
+    '<td><b>Local:</b> </td>',
+    '<td><b>Cota (m):</b> </td>',
+    '<div><dt>Cliente</dt><dd></dd></div>',
+  ])
+    assert.ok(html.includes(label), label);
+  // The cover location is a phrase without a label: nothing is drawn in its place.
+  assert.ok(!html.includes('class="cover-location"'));
+  assert.ok(html.includes('class="cover-year">2026</p>'));
+  assert.ok(!html.includes('Local não informado'));
+  assert.ok(!html.includes('Não informada'));
+  assert.ok(!html.includes('Cliente:</b> Não informado'));
+  assert.ok(!html.includes('Local:</b> Não informado'));
+  assert.ok(!html.includes('<dd>Não informado</dd>'));
+  assert.deepEqual(html.match(isolatedNi), null);
+  // A blank client name is treated as missing on the cover, as before.
+  const blankClient = renderReport({
+    ...issueWithoutWorkData('0.8.17'),
+    work: { ...issueWithoutWorkData('0.8.17').work, clientName: '  ' },
+  });
+  assert.ok(blankClient.includes('<div><dt>Cliente</dt><dd></dd></div>'));
+  // Recorded data is still printed.
+  const located = renderReport({
+    ...issueWithoutWorkData('0.8.17'),
+    work: {
+      ...issueWithoutWorkData('0.8.17').work,
+      clientName: 'Cliente X',
+      city: 'Natal',
+      state: 'RN',
+    },
+  });
+  assert.ok(located.includes('<p class="cover-location">Natal - RN</p>'));
+  assert.ok(located.includes('<td><b>Local:</b> Natal · RN</td>'));
+  assert.ok(located.includes('<div><dt>Cliente</dt><dd>Cliente X</dd></div>'));
+  const preview = fieldDatePreview('0.8.17');
+  assert.ok(preview.includes('<td><b>Data de campo:</b> </td>'));
+  assert.ok(!preview.includes('Não informada'));
+});
+
+test('0.8.16 header and cover keep the historical "não informado" wording', () => {
+  const html = renderReport(issueWithoutWorkData('0.8.16'));
+  for (const legacy of [
+    '<td><b>Cliente:</b> Não informado</td>',
+    '<td><b>Local:</b> Não informado</td>',
+    '<td><b>Cota (m):</b> Não informada</td>',
+    '<div><dt>Cliente</dt><dd>Não informado</dd></div>',
+    '<p class="cover-location">Local não informado</p>',
+  ])
+    assert.ok(html.includes(legacy), legacy);
+  assert.ok(fieldDatePreview('0.8.16').includes('<td><b>Data de campo:</b> Não informada</td>'));
 });
