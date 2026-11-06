@@ -10,10 +10,7 @@ double contrast(Color a, Color b) {
 }
 
 void main() {
-  const palettes = {
-    'claro': MetroPalette.light,
-    'escuro': MetroPalette.dark,
-  };
+  const palettes = {'claro': MetroPalette.light, 'escuro': MetroPalette.dark};
 
   for (final MapEntry(key: name, value: p) in palettes.entries) {
     test('$name: text keeps at least 4.5:1 on every surface it is used on', () {
