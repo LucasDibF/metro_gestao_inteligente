@@ -38,7 +38,7 @@ class HoleStatusStrip extends StatelessWidget {
         child: ScaleTransition(
           alignment: Alignment.centerLeft,
           scale: Tween(begin: 0.92, end: 1.0).animate(
-            CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+            CurvedAnimation(parent: animation, curve: MetroMotion.springCurve),
           ),
           child: child,
         ),

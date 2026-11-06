@@ -76,7 +76,6 @@ class MetroReveal extends StatefulWidget {
   final Widget child;
   final int index;
 
-  static const stagger = Duration(milliseconds: 45);
   static const _maxStaggered = 8;
 
   @override
@@ -95,7 +94,7 @@ class _MetroRevealState extends State<MetroReveal>
     // The stagger is a leading pause inside one animation, so no timer is left
     // behind when the widget goes away.
     final delay =
-        MetroReveal.stagger * widget.index.clamp(0, MetroReveal._maxStaggered);
+        MetroMotion.stagger * widget.index.clamp(0, MetroReveal._maxStaggered);
     final total = MetroMotion.enter + delay;
     _controller = AnimationController(vsync: this, duration: total);
     _progress = CurvedAnimation(
@@ -170,10 +169,8 @@ class _MetroPressableState extends State<MetroPressable> {
       onPointerCancel: (_) => _set(false),
       child: AnimatedScale(
         scale: _pressed ? MetroPressable.pressedScale : 1,
-        duration: _pressed
-            ? const Duration(milliseconds: 90)
-            : const Duration(milliseconds: 420),
-        curve: _pressed ? Curves.easeOut : Curves.easeOutBack,
+        duration: _pressed ? MetroMotion.press : MetroMotion.release,
+        curve: _pressed ? MetroMotion.pressCurve : MetroMotion.springCurve,
         child: widget.child,
       ),
     );
@@ -195,7 +192,7 @@ class _MetroSpinState extends State<MetroSpin>
     with SingleTickerProviderStateMixin {
   late final AnimationController _turns = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 1),
+    duration: MetroMotion.spin,
   );
 
   @override
