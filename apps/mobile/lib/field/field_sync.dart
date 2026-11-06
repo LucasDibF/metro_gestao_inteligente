@@ -41,15 +41,30 @@ class FieldSync {
   Future<Json> drain(String account, String work, String hole) async {
     var doc = (await store.read(account, hole))!;
     String? submitRefusal;
+    // The snapshot confirms the local version once; after that each receipt
+    // carries the server's version and review state for the next operation.
+    var confirmed = false;
     for (final operation in await store.pending(account, hole)) {
       if (isRejected(operation)) continue;
       if (session.profile?.cacheKey != account) {
         throw const ApiFailure(401, 'Entre novamente.');
       }
       final id = operation['id'] as String;
+      final base = route(work, hole);
       final Json receipt;
       try {
-        receipt = await _deliver(work, hole, operation, doc);
+        final recorded = await _recordedReceipt(base, operation);
+        if (recorded != null) {
+          receipt = recorded;
+        } else {
+          if (!confirmed) {
+            await _confirmVersion(base, doc);
+            confirmed = true;
+          } else if (doc['hole']['reviewState'] != 'DRAFT') {
+            throw const FieldConflict();
+          }
+          receipt = await _send(base, operation, doc);
+        }
       } on _Refused catch (refused) {
         if (operation['kind'] == 'SUBMIT') {
           await store.remove(account, hole, id);
@@ -105,28 +120,29 @@ class FieldSync {
         await session.get('${route(work, hole)}/mobile/snapshot'),
       );
 
-  /// The receipt of [operation], from the server's records or from sending it.
-  Future<Json> _deliver(
-    String work,
-    String hole,
-    Json operation,
-    Json doc,
-  ) async {
-    final base = route(work, hole);
-    final alreadyPrepared = operation['prepared'] as String?;
-    if (alreadyPrepared != null) {
-      final lookup = await session.get(
-        '$base/mobile/operacoes/${operation['id']}',
-      );
-      final known = lookup['receipt'] as Json?;
-      if (known != null) return known;
-    }
+  /// The receipt the server kept for an operation sent before, if it got there.
+  Future<Json?> _recordedReceipt(String base, Json operation) async {
+    if (operation['prepared'] == null) return null;
+    final lookup = await session.get(
+      '$base/mobile/operacoes/${operation['id']}',
+    );
+    return lookup['receipt'] as Json?;
+  }
+
+  /// The local copy must start from the server's current version, in draft.
+  Future<void> _confirmVersion(String base, Json doc) async {
     final snapshot = await session.get('$base/mobile/snapshot');
-    final remote = snapshot['technical'] as Json;
-    if (remote['hole']['technicalVersion'] != doc['serverVersion'] ||
-        remote['hole']['reviewState'] != 'DRAFT') {
+    final remote = (snapshot['technical'] as Json)['hole'] as Json;
+    if (remote['technicalVersion'] != doc['serverVersion'] ||
+        remote['reviewState'] != 'DRAFT') {
       throw const FieldConflict();
     }
+  }
+
+  /// Prepares [operation] once and sends it; the server checks the version
+  /// again under the hole lock and answers 409 when it moved.
+  Future<Json> _send(String base, Json operation, Json doc) async {
+    final alreadyPrepared = operation['prepared'] as String?;
     final Json prepared;
     if (alreadyPrepared != null) {
       prepared = jsonDecode(alreadyPrepared) as Json;
@@ -145,6 +161,9 @@ class FieldSync {
     } on ApiFailure catch (failure) {
       if (failure.status == 400 || failure.status == 422) {
         throw _Refused(failure.message);
+      }
+      if (failure.status == 409 && failure.code == _versionConflict) {
+        throw const FieldConflict();
       }
       rethrow;
     }
@@ -166,6 +185,8 @@ class FieldSync {
     });
   }
 }
+
+const _versionConflict = 'RECORD_VERSION_CONFLICT';
 
 class _Refused implements Exception {
   const _Refused(this.reason);
