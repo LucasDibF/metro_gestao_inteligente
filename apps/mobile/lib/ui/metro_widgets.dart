@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
 import 'metro_layout.dart';
 import 'metro_theme.dart';
@@ -155,9 +156,28 @@ class MetroPressable extends StatefulWidget {
 
 class _MetroPressableState extends State<MetroPressable> {
   var _pressed = false;
+  Offset? _downAt;
 
   void _set(bool pressed) {
     if (_pressed != pressed) setState(() => _pressed = pressed);
+  }
+
+  void _down(PointerDownEvent event) {
+    _downAt = event.position;
+    _set(true);
+  }
+
+  /// A finger that travels past the touch slop is scrolling, not tapping.
+  void _move(PointerMoveEvent event) {
+    final downAt = _downAt;
+    if (downAt != null && (event.position - downAt).distance > kTouchSlop) {
+      _release();
+    }
+  }
+
+  void _release() {
+    _downAt = null;
+    _set(false);
   }
 
   @override
@@ -165,9 +185,10 @@ class _MetroPressableState extends State<MetroPressable> {
     if (!widget.enabled || MetroMotion.reduced(context)) return widget.child;
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: (_) => _set(true),
-      onPointerUp: (_) => _set(false),
-      onPointerCancel: (_) => _set(false),
+      onPointerDown: _down,
+      onPointerMove: _move,
+      onPointerUp: (_) => _release(),
+      onPointerCancel: (_) => _release(),
       child: AnimatedScale(
         scale: _pressed ? MetroPressable.pressedScale : 1,
         duration: _pressed

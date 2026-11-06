@@ -219,7 +219,8 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
           const SizedBox(height: MetroSpace.xs),
           MetroPanel(
             index: index,
-            pressable: !row.containsKey('children'),
+            // Holes cannot open while downloading, so their cards stay still.
+            pressable: !row.containsKey('children') && !_downloading,
             child: row.containsKey('children') ? _folder(row) : _hole(row),
           ),
           const SizedBox(height: MetroSpace.xs),

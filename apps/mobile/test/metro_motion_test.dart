@@ -83,6 +83,31 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets('a pressed panel springs back once the finger scrolls', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        ListView(
+          children: [
+            const MetroPanel(pressable: true, child: MetroRow(title: 'Obra')),
+            for (var index = 0; index < 20; index++) const SizedBox(height: 80),
+          ],
+        ),
+      ),
+    );
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Obra')),
+    );
+    await tester.pump();
+    expect(_scale(tester), MetroPressable.pressedScale);
+    await gesture.moveBy(const Offset(0, -40));
+    await tester.pump();
+    expect(_scale(tester), 1);
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('reduced motion keeps pressable panels still', (tester) async {
     await tester.pumpWidget(
       _app(
