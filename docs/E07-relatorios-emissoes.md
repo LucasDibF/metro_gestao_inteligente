@@ -189,3 +189,24 @@ O modelo 0.8.15 e os anteriores conservam o desenho histórico. Validação: tes
 Até o 0.8.16, o perfil individual imprimia "NI" (não informado) em cada campo sem dado: peso e queda, revestimento, amostrador, início e término, tipologia, km, lote, posição, deslocamento, fiscal, as leituras de nível d’água, trado, lavagem, profundidade do revestimento, lavagem por tempo, a cota sem altitude e as colunas de revestimento e método. A partir do 0.8.17, esses campos ficam em branco: o rótulo continua ("Fiscal:", "Início: · Término:") e a célula fica vazia. Na legenda sai a definição "NI = não informado;". No cabeçalho das folhas e na capa, "Não informado" e "Não informada" também saem: Cliente, Local, Cota (m) e Data de campo (na conferência interativa) mantêm o rótulo com o valor vazio, e o cliente da capa fica vazio. A linha de local da capa, que não tem rótulo, deixa de ser impressa quando não há cidade nem estado (antes: "Local não informado"). Continuam como estavam "NE = não encontrado", "Coordenadas UTM: Não informadas", "Não informado (não equivale a NE)" no nível d’água, "não registrado" no motivo da paralisação, "não confirmados" sobre o equipamento, o "—" de avanço inexistente e o separador "·".
 
 O modelo 0.8.16 e os anteriores conservam o "NI" e o "Não informado". Validação: a saída HTML das 20 versões anteriores (perfis, conferência interativa e relatório completo com capa, com e sem dados de campo e da obra) foi comparada byte a byte antes e depois da mudança, sem diferença; testes novos cobrem o 0.8.17 sem "NI" nem "não informado" no cabeçalho e na capa, com os rótulos, e o 0.8.16 com o texto histórico; testes unitários, tipos e formatação aprovados. Um PDF de exemplo foi renderizado pelo worker no 0.8.17 e inspecionado.
+
+## Título profissional do responsável — modelo 0.8.18
+
+A aprovação passou a copiar nome, registro e título do perfil profissional do engenheiro ([E05](E05-revisao.md)). O snapshot de cada furo leva `reviewerTitle` junto de `reviewerName` e `reviewerRegistration`. Telefone e e-mail do perfil não entram no snapshot.
+
+A partir do 0.8.18, o título aparece na mesma linha do nome, separado por travessão ("Ana Souza — Engenheira Civil"):
+
+- no rodapé "Responsável técnico pelos dados" de cada folha do furo (perfis e fotografias);
+- na coluna "Responsável técnico" do quadro de responsabilidade técnica, impresso quando o relatório tem mais de 3 furos.
+
+O título fica na linha do nome para o rodapé manter a altura. Um furo aprovado antes do perfil, sem título, mostra só o nome, sem texto no lugar do título. O título passa pelo mesmo escape de HTML do nome.
+
+No quadro, um nome longo com título quebra em mais linhas. Até o 0.8.17 cada folha do quadro tem 6 furos. No 0.8.18 continua assim, mas a folha aceita no máximo o texto de 6 nomes de 200 caracteres: cada linha conta pelo menos 200 caracteres, e nome com título conta o total. Com nomes e títulos comuns nada muda. Com o maior nome (200) e o maior título (120), cabem 3 furos por folha.
+
+O modelo 0.8.17 e os anteriores não imprimem o título, mesmo quando o snapshot o tem. Validação:
+
+- A saída HTML das 21 versões anteriores (relatório completo com 1, 4, 7 e 13 furos, nome de 200 e título de 120 caracteres) foi comparada byte a byte com o código anterior, sem diferença.
+- `tests/report-reviewer-title.test.ts` cobre o título no rodapé e no quadro, o furo sem título, o escape de HTML, a paginação do quadro e as versões anteriores iguais com e sem título.
+- `tests/integration/report-layout.test.ts` passa pela verificação de geometria do worker com 7 furos de nome e título máximos.
+- `tests/integration/reports.test.ts` confere o título no snapshot emitido.
+- Um PDF de exemplo no 0.8.18 foi renderizado localmente e inspecionado.

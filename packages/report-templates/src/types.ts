@@ -23,6 +23,8 @@ export interface ReportSnapshot {
     fieldDate: string;
     reviewerName: string;
     reviewerRegistration: string;
+    /** Copied from the approver's professional profile; absent in snapshots before 0.8.18. */
+    reviewerTitle?: string | null;
     reviewedAt: string;
     reviewNote: string | null;
     officialCoordinate: {

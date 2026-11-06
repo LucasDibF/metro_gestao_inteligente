@@ -13,7 +13,7 @@ import { PrivateStorage } from '@spt/private-storage';
 import { AppModule } from '../../apps/api/src/app.module';
 import { hashPassword } from '../../apps/api/src/auth/password';
 import { processNextReport } from '../../apps/worker/src/report-worker';
-import { saveProfessionalProfile } from '../helpers/professional-profile';
+import { completeReviewerCopy, saveProfessionalProfile } from '../helpers/professional-profile';
 test('report snapshots and PDFs are immutable, private and idempotent; worker leases recover and older jobs cannot replace current issues', async () => {
   const db = new PrismaClient({
       adapter: new PrismaPg({ connectionString: process.env.MIGRATION_DATABASE_URL }),
@@ -237,6 +237,12 @@ test('report snapshots and PDFs are immutable, private and idempotent; worker le
     assert.deepEqual(processed.sort(), [false, true]);
     let issue = await db.reportIssue.findUniqueOrThrow({ where: { id: two.id } });
     assert.equal((issue.snapshot as unknown as ReportSnapshot).tenant.logoDataUrl, logoDataUrl);
+    // The snapshot freezes the approval copy, title included; phone and e-mail never enter it.
+    const [frozen] = (issue.snapshot as unknown as ReportSnapshot).holes;
+    assert.equal(frozen.reviewerName, completeReviewerCopy.reviewerName);
+    assert.equal(frozen.reviewerRegistration, completeReviewerCopy.reviewerRegistration);
+    assert.equal(frozen.reviewerTitle, completeReviewerCopy.reviewerTitle);
+    assert.equal((issue.snapshot as unknown as ReportSnapshot).templateVersion, '0.8.18');
     await db.tenant.update({
       where: { id: tenantIds[0] },
       data: { profile: { logoDataUrl: null } },

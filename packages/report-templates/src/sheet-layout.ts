@@ -5,6 +5,7 @@ import { PRINT_LAYOUT } from './print-layout';
 import type { ReportSnapshot } from './types';
 import { escapeHtml as e } from './html';
 import { missingFieldWording } from './missing-field';
+import { reviewerIdentity } from './reviewer-identity';
 export const numeric = (n: string | number) =>
   Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 export function sheetHeader(
@@ -27,7 +28,7 @@ export function sheetFooter(
   h?: ReportSnapshot['holes'][number],
   summary = false,
 ) {
-  return `<div class="document-footer"><footer class="responsibility"><div><b>Responsável técnico pelos dados</b><br>${h ? e(h.reviewerName) : 'Conforme aprovação individual dos furos'}<br>${h ? e(h.reviewerRegistration) : summary ? 'Identificação individual nas folhas dos furos e no quadro de responsabilidade.' : s.holes.map((h) => e(h.code) + ' — ' + e(h.reviewerRegistration)).join('<br>')}</div><div><b>Emissão ${s.issueNumber}</b><br>Sem assinatura digital<br>ART: não cadastrada</div></footer><div class="trace">${e(s.report.id)} · Composição ${s.report.version} · Modelo ${e(s.templateVersion)}${h ? ' · Versão técnica ' + h.technicalVersion : ''}</div></div>`;
+  return `<div class="document-footer"><footer class="responsibility"><div><b>Responsável técnico pelos dados</b><br>${h ? reviewerIdentity(s.templateVersion, h) : 'Conforme aprovação individual dos furos'}<br>${h ? e(h.reviewerRegistration) : summary ? 'Identificação individual nas folhas dos furos e no quadro de responsabilidade.' : s.holes.map((h) => e(h.code) + ' — ' + e(h.reviewerRegistration)).join('<br>')}</div><div><b>Emissão ${s.issueNumber}</b><br>Sem assinatura digital<br>ART: não cadastrada</div></footer><div class="trace">${e(s.report.id)} · Composição ${s.report.version} · Modelo ${e(s.templateVersion)}${h ? ' · Versão técnica ' + h.technicalVersion : ''}</div></div>`;
 }
 export const sheetCss = `
 @page { size: A4; margin: ${PRINT_LAYOUT.margins.top}mm ${PRINT_LAYOUT.margins.right}mm ${PRINT_LAYOUT.margins.bottom}mm ${PRINT_LAYOUT.margins.left}mm; }

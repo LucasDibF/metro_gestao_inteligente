@@ -46,6 +46,8 @@ function fixture(): ReportSnapshot {
         fieldDate: '2026-10-31',
         reviewerName: 'Responsável de teste',
         reviewerRegistration: 'DEMO',
+        // A long title still fits the responsibility block of every sheet.
+        reviewerTitle: 'Engenheiro Civil e Engenheiro de Segurança do Trabalho',
         reviewedAt: '2026-10-31',
         reviewNote: null,
         officialCoordinate: coordinate,
@@ -132,6 +134,22 @@ test('report pages fit approved A4 geometry with long content, zero origin and c
       { fromM: '0.10', toM: '5', soilType: 'Argila', description: 'Outra camada.' },
     ];
     scenarios.push(thin);
+    // The longest name and title on every hole: the responsibility table moves rows to more pages.
+    const responsible = fixture();
+    responsible.holes = Array.from({ length: 7 }, (_, i) => ({
+      ...fixture().holes[0],
+      id: 'hole-' + i,
+      code: 'SP-0' + (i + 1),
+      reviewerName: 'Responsável técnico de teste '.repeat(8).slice(0, 200),
+      reviewerTitle: 'Engenheiro civil e de segurança do trabalho '.repeat(3).slice(0, 120),
+    }));
+    responsible.map.points = responsible.holes.map((h, i) => ({
+      code: h.code,
+      x: 250000 + i * 10,
+      y: 9350000,
+      selected: true,
+    }));
+    scenarios.push(responsible);
     const jpeg =
       'data:image/jpeg;base64,' +
       (
