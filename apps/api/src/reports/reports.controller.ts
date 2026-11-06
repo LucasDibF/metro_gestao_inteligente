@@ -16,7 +16,14 @@ import {
 import { Response } from 'express';
 import { AuthRequest } from '../auth/auth.guard';
 import { Roles } from '../auth/roles.guard';
+import type { Report } from '@prisma/client';
 import { ReportsService } from './reports.service';
+import {
+  ReportHistoryRows,
+  ReportIssueRow,
+  ReportMapPreviewRows,
+  ReportOptionsRows,
+} from './report-rows';
 @Controller('obras/:workId/relatorios')
 @Roles('ENGINEER', 'COMMERCIAL', 'ADMIN', 'VIEWER')
 export class ReportsController {
@@ -25,17 +32,17 @@ export class ReportsController {
     @Req() r: AuthRequest,
     @Param('workId', ParseUUIDPipe) w: string,
     @Query('page') page?: string,
-  ) {
+  ): Promise<ReportOptionsRows> {
     return this.reports.options(r.identity, w, hierarchyPage(page));
   }
-  @Get() list(@Req() r: AuthRequest, @Param('workId', ParseUUIDPipe) w: string) {
+  @Get() list(@Req() r: AuthRequest, @Param('workId', ParseUUIDPipe) w: string): Promise<Report[]> {
     return this.reports.list(r.identity, w);
   }
   @Post() @Roles('ENGINEER') create(
     @Req() r: AuthRequest,
     @Param('workId', ParseUUIDPipe) w: string,
     @Body() v: unknown,
-  ) {
+  ): Promise<Report> {
     return this.reports.save(r.identity, w, v);
   }
   @Put(':id') @Roles('ENGINEER') edit(
@@ -43,14 +50,14 @@ export class ReportsController {
     @Param('workId', ParseUUIDPipe) w: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() v: unknown,
-  ) {
+  ): Promise<Report> {
     return this.reports.save(r.identity, w, v, id);
   }
   @Get(':id/croqui') map(
     @Req() r: AuthRequest,
     @Param('workId', ParseUUIDPipe) w: string,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<ReportMapPreviewRows> {
     return this.reports.map(r.identity, w, id);
   }
   @Put(':id/croqui') @Roles('ENGINEER') saveMap(
@@ -58,14 +65,14 @@ export class ReportsController {
     @Param('workId', ParseUUIDPipe) w: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() v: unknown,
-  ) {
+  ): Promise<Report> {
     return this.reports.saveMap(r.identity, w, id, v);
   }
   @Get(':id/emissoes') history(
     @Req() r: AuthRequest,
     @Param('workId', ParseUUIDPipe) w: string,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<ReportHistoryRows> {
     return this.reports.history(r.identity, w, id);
   }
   @Post(':id/emissoes') @Roles('ENGINEER') issue(
@@ -73,7 +80,7 @@ export class ReportsController {
     @Param('workId', ParseUUIDPipe) w: string,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() v: unknown,
-  ) {
+  ): Promise<ReportIssueRow> {
     return this.reports.issue(r.identity, w, id, v);
   }
   @Get(':id/emissoes/:issueId/pdf') async pdf(
@@ -82,7 +89,7 @@ export class ReportsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Param('issueId', ParseUUIDPipe) issueId: string,
     @Res() res: Response,
-  ) {
+  ): Promise<void> {
     if (!r.identity.canDownloadReports) throw new ForbiddenException('Report download disabled');
     const pdf = await this.reports.download(r.identity, w, id, issueId);
     res

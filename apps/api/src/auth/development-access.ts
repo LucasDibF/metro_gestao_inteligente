@@ -9,7 +9,7 @@ export function loopbackRequest(request: {
     loopback.includes(request.socket?.remoteAddress ?? request.ip ?? '')
   );
 }
-export function developmentBypassEnabled() {
+export function developmentBypassEnabled(): boolean {
   const enabled = process.env.DEV_AUTH_BYPASS === 'true';
   if (enabled) {
     const database = process.env.DATABASE_URL;

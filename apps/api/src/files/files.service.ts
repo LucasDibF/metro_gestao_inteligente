@@ -1,4 +1,5 @@
-import { Prisma } from '@prisma/client';
+import { Borehole, BoreholeCoordinate, Prisma } from '@prisma/client';
+import type { PhotoReference } from '@spt/api-contracts';
 import { optionalText } from '../technical/technical-input';
 import { isUuid } from '../common/uuid';
 import { requireFieldWrite } from '../auth/field-access';
@@ -16,6 +17,7 @@ import { TenantContext, TenantDatabaseService } from '../database/tenant-databas
 import { TechnicalService } from '../technical/technical.service';
 import { expectedVersion, technicalInput, text } from '../technical/technical-input';
 import { coordinateInput, photoDistance } from './coordinates';
+import { BoreholeFilesRows, photoListSelect } from './files-rows';
 import { closePrivateStorage, privateStorage } from './shared-storage';
 /** An object already written under its own new key, not yet referenced by any row. */
 export interface StagedPhoto {
@@ -43,7 +45,7 @@ export class FilesService implements OnApplicationShutdown {
     workId: string,
     boreholeId: string,
     transaction?: Prisma.TransactionClient,
-  ) {
+  ): Promise<BoreholeFilesRows> {
     return this.db.run(
       c,
       async (tx) => {
@@ -58,21 +60,7 @@ export class FilesService implements OnApplicationShutdown {
           where: { ...where, deletedAt: null },
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           take: 100,
-          select: {
-            id: true,
-            caption: true,
-            purpose: true,
-            version: true,
-            gpsLatitude: true,
-            gpsLongitude: true,
-            crop: true,
-            processingState: true,
-            width: true,
-            height: true,
-            mime: true,
-            sizeBytes: true,
-            createdAt: true,
-          },
+          select: photoListSelect,
         });
         return {
           technicalVersion: hole.technicalVersion,
@@ -101,7 +89,7 @@ export class FilesService implements OnApplicationShutdown {
     kind: 'PLANNED' | 'EXECUTED',
     body: unknown,
     transaction?: Prisma.TransactionClient,
-  ) {
+  ): Promise<BoreholeCoordinate> {
     const { version, ...data } = coordinateInput(body);
     return this.db.run(
       c,
@@ -138,7 +126,7 @@ export class FilesService implements OnApplicationShutdown {
       transaction,
     );
   }
-  official(c: TenantContext, workId: string, boreholeId: string, body: unknown) {
+  official(c: TenantContext, workId: string, boreholeId: string, body: unknown): Promise<Borehole> {
     const v = technicalInput(body, ['coordinateId', 'technicalVersion']);
     const version = expectedVersion(v.technicalVersion);
     if (!isUuid(v.coordinateId)) throw new BadRequestException('Coordinate required');
@@ -181,7 +169,7 @@ export class FilesService implements OnApplicationShutdown {
     file: Express.Multer.File | undefined,
     caption: unknown,
     purpose?: unknown,
-  ) {
+  ): Promise<PhotoReference> {
     await this.db.run(c, async (tx) => {
       const hole = await this.technical.visibleParent(tx, c, workId, boreholeId);
       await requireFieldWrite(tx, c, hole.reviewState, workId);
@@ -246,7 +234,7 @@ export class FilesService implements OnApplicationShutdown {
     boreholeId: string,
     staged: StagedPhoto,
     id?: string,
-  ): Promise<{ id: string; version: number }> {
+  ): Promise<PhotoReference> {
     const hole = await this.technical.parent(tx, c, workId, boreholeId);
     await requireFieldWrite(tx, c, hole.reviewState, workId);
     if (
@@ -267,7 +255,7 @@ export class FilesService implements OnApplicationShutdown {
     id: string,
     body: unknown,
     deleted = false,
-  ) {
+  ): Promise<PhotoReference> {
     const v = technicalInput(
       body,
       deleted ? ['version'] : ['version', 'caption', 'crop', 'purpose'],
@@ -320,7 +308,7 @@ export class FilesService implements OnApplicationShutdown {
     boreholeId: string,
     id: string,
     preview: boolean,
-  ) {
+  ): Promise<{ body: Buffer; mime: string }> {
     const photo = await this.db.run(c, async (tx) => {
       await this.technical.visibleParent(tx, c, workId, boreholeId);
       return tx.boreholePhoto.findFirst({

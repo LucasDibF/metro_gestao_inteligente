@@ -6,7 +6,7 @@ type Hole = {
   technicalVersion: number;
   officialCoordinateId: string | null;
 };
-export function validateReportEligibility(holes: Hole[], selectedCount: number) {
+export function validateReportEligibility(holes: Hole[], selectedCount: number): void {
   if (holes.length !== selectedCount)
     throw new BadRequestException({
       code: 'REPORT_HOLE_UNAVAILABLE',

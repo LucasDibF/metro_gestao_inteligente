@@ -1,7 +1,15 @@
 import { BadRequestException } from '@nestjs/common';
 import { object } from '../auth/auth-input';
 import { isUuid } from '../common/uuid';
-export function hierarchyInput(body: unknown, borehole: boolean, editing: boolean) {
+/** A folder or borehole as the hierarchy forms send it. */
+export interface HierarchyInput {
+  name: string;
+  code: string;
+  folderId: string | null;
+  plannedDepthM: string | null;
+  version: number | undefined;
+}
+export function hierarchyInput(body: unknown, borehole: boolean, editing: boolean): HierarchyInput {
   const input = object(body);
   const allowed = new Set([
     ...(borehole ? ['code', 'folderId', 'plannedDepthM'] : ['name']),
@@ -35,7 +43,7 @@ export function hierarchyInput(body: unknown, borehole: boolean, editing: boolea
     version: editing ? Number(input.version) : undefined,
   };
 }
-export function hierarchyPage(value?: string) {
+export function hierarchyPage(value?: string): number {
   if (
     value !== undefined &&
     (typeof value !== 'string' || !/^[1-9]\d*$/.test(value) || Number(value) > 100000)

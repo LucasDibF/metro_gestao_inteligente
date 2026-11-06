@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import type { TenantContext } from '../database/tenant-database.service';
 
 // Matches the metre intervals already used by the approved report.
-export function metreInterval(depthM: string) {
+export function metreInterval(depthM: string): { fromM: string; toM: string } {
   const depth = Number(depthM);
   return { fromM: String(Math.max(0, depth - 1)), toM: String(depth === 0 ? 1 : depth) };
 }
@@ -20,7 +20,7 @@ export async function saveMetreSoil(
     soilMoisture?: string | null;
   },
   executedDepthM: Prisma.Decimal | null,
-) {
+): Promise<void> {
   const interval = metreInterval(depthM);
   if (executedDepthM !== null) {
     if (Number(interval.fromM) >= Number(executedDepthM))

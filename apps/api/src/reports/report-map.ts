@@ -1,8 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import proj4 from 'proj4';
-import { ReportSnapshot } from '@spt/report-templates';
 import { TenantContext } from '../database/tenant-database.service';
+import type { ReportMapRows } from './report-rows';
 export type MapView = {
   centerX: number;
   centerY: number;
@@ -35,7 +35,7 @@ export async function reportMap(
   holeIds: string[],
   showOthers: boolean,
   view?: MapView | null,
-): Promise<ReportSnapshot['map'] | null> {
+): Promise<ReportMapRows | null> {
   const selected = await tx.borehole.findMany({
     where: { tenantId: c.tenantId, workId, id: { in: holeIds }, deletedAt: null },
     include: { coordinates: true },

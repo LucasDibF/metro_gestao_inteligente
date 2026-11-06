@@ -4,7 +4,7 @@ import { StorageUnavailableError } from '@spt/private-storage';
 import { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { AuthRequest } from '../auth/auth.guard';
-export function requestLog(req: Request, res: Response, next: () => void) {
+export function requestLog(req: Request, res: Response, next: () => void): void {
   const requestId = randomUUID(),
     started = performance.now();
   res.setHeader('X-Request-ID', requestId);

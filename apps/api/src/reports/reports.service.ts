@@ -11,9 +11,18 @@ import {
 } from '@nestjs/common';
 import { validateReportEligibility } from './report-eligibility';
 import { googleMapReference, inpeMapBackground } from '@spt/map-reference';
-import { Prisma } from '@prisma/client';
+import { Prisma, Report } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { parseMapView, reportMap, MapView } from './report-map';
+import {
+  IssuedPdf,
+  ReportHistoryRows,
+  ReportIssueRow,
+  ReportMapPreviewRows,
+  ReportOptionsRows,
+  issueSelect,
+  reportBoreholeSelect,
+} from './report-rows';
 import {
   ReportSnapshot,
   TEMPLATE_VERSION,
@@ -26,21 +35,10 @@ import { lockWork, readWork } from '../works/work-lock';
 import { privateStorage } from '../files/shared-storage';
 import { expectedVersion, technicalInput, text } from '../technical/technical-input';
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
-export const issueSelect = {
-  id: true,
-  reportId: true,
-  state: true,
-  issueNumber: true,
-  compositionVersion: true,
-  pdfSha256: true,
-  errorCode: true,
-  createdAt: true,
-  finishedAt: true,
-} as const;
 @Injectable()
 export class ReportsService {
   constructor(@Inject(TenantDatabaseService) private readonly db: TenantDatabaseService) {}
-  list(c: TenantContext, workId: string) {
+  list(c: TenantContext, workId: string): Promise<Report[]> {
     return this.db.run(c, async (tx) => {
       await readWork(tx, c, workId);
       return tx.report.findMany({
@@ -50,7 +48,7 @@ export class ReportsService {
       });
     });
   }
-  options(c: TenantContext, workId: string, page: number) {
+  options(c: TenantContext, workId: string, page: number): Promise<ReportOptionsRows> {
     return this.db.run(c, async (tx) => {
       await readWork(tx, c, workId);
       const where = { tenantId: c.tenantId, workId, deletedAt: null };
@@ -60,14 +58,7 @@ export class ReportsService {
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           take: 20,
           skip: (page - 1) * 20,
-          select: {
-            id: true,
-            code: true,
-            photos: {
-              where: { deletedAt: null, processingState: 'READY' },
-              select: { id: true, caption: true },
-            },
-          },
+          select: reportBoreholeSelect,
         }),
         total: await tx.borehole.count({ where }),
         page,
@@ -75,7 +66,12 @@ export class ReportsService {
       };
     });
   }
-  private async parent(tx: Prisma.TransactionClient, c: TenantContext, workId: string, id: string) {
+  private async parent(
+    tx: Prisma.TransactionClient,
+    c: TenantContext,
+    workId: string,
+    id: string,
+  ): Promise<Report> {
     await lockWork(tx, c, workId);
     const report = await tx.report.findFirst({ where: { id, workId, tenantId: c.tenantId } });
     if (!report) throw new NotFoundException('Report unavailable');
@@ -86,13 +82,13 @@ export class ReportsService {
     c: TenantContext,
     workId: string,
     id: string,
-  ) {
+  ): Promise<Report> {
     await readWork(tx, c, workId);
     const report = await tx.report.findFirst({ where: { id, workId, tenantId: c.tenantId } });
     if (!report) throw new NotFoundException('Report unavailable');
     return report;
   }
-  private ids(value: unknown, max: number, required = false) {
+  private ids(value: unknown, max: number, required = false): string[] {
     if (
       !Array.isArray(value) ||
       value.length > max ||
@@ -103,7 +99,7 @@ export class ReportsService {
       throw new BadRequestException('Invalid selected records');
     return value as string[];
   }
-  save(c: TenantContext, workId: string, body: unknown, id?: string) {
+  save(c: TenantContext, workId: string, body: unknown, id?: string): Promise<Report> {
     const v = technicalInput(body, [
         'title',
         'notes',
@@ -172,7 +168,7 @@ export class ReportsService {
       return tx.report.findUniqueOrThrow({ where: { id } });
     });
   }
-  history(c: TenantContext, workId: string, id: string) {
+  history(c: TenantContext, workId: string, id: string): Promise<ReportHistoryRows> {
     return this.db.run(c, async (tx) => {
       const report = await this.visibleReport(tx, c, workId, id);
       return {
@@ -184,14 +180,7 @@ export class ReportsService {
             id: { in: (report.composition as { holeIds: string[] }).holeIds },
             deletedAt: null,
           },
-          select: {
-            id: true,
-            code: true,
-            photos: {
-              where: { deletedAt: null, processingState: 'READY' },
-              select: { id: true, caption: true },
-            },
-          },
+          select: reportBoreholeSelect,
         }),
         issues: await tx.reportIssue.findMany({
           where: { tenantId: c.tenantId, workId, reportId: id },
@@ -202,7 +191,7 @@ export class ReportsService {
       };
     });
   }
-  issue(c: TenantContext, workId: string, id: string, body: unknown) {
+  issue(c: TenantContext, workId: string, id: string, body: unknown): Promise<ReportIssueRow> {
     const v = technicalInput(body, ['version', 'idempotencyKey']),
       version = expectedVersion(v.version);
     if (!isUuid(v.idempotencyKey)) throw new BadRequestException('Idempotency key must be UUID');
@@ -345,7 +334,7 @@ export class ReportsService {
       return issue;
     });
   }
-  async map(c: TenantContext, workId: string, id: string) {
+  async map(c: TenantContext, workId: string, id: string): Promise<ReportMapPreviewRows> {
     const result = await this.db.run(c, async (tx) => {
       const report = await this.visibleReport(tx, c, workId, id),
         composition = report.composition as {
@@ -383,7 +372,7 @@ export class ReportsService {
     };
   }
 
-  saveMap(c: TenantContext, workId: string, id: string, body: unknown) {
+  saveMap(c: TenantContext, workId: string, id: string, body: unknown): Promise<Report> {
     const v = technicalInput(body, ['version', 'view']),
       version = expectedVersion(v.version),
       view = parseMapView(v.view);
@@ -412,7 +401,12 @@ export class ReportsService {
       });
     });
   }
-  async download(c: TenantContext, workId: string, id: string, issueId: string) {
+  async download(
+    c: TenantContext,
+    workId: string,
+    id: string,
+    issueId: string,
+  ): Promise<IssuedPdf> {
     const issue = await this.db.run(c, async (tx) => {
       await this.visibleReport(tx, c, workId, id);
       return tx.reportIssue.findFirst({

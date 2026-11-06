@@ -12,7 +12,7 @@ interface PhotoJob {
   thumbnailKey: string;
   sha256: string;
 }
-export async function processNextPhoto(db: PrismaClient, onlyPhotoId?: string) {
+export async function processNextPhoto(db: PrismaClient, onlyPhotoId?: string): Promise<boolean> {
   const [row] = await db.$queryRaw<
     Array<{ job: PhotoJob | null }>
   >`SELECT claim_photo_job(${onlyPhotoId ?? null}::uuid) AS job`;

@@ -18,7 +18,7 @@ const hash = (value: string | Buffer) => createHash('sha256').update(value).dige
 export async function processNextReport(
   db: PrismaClient,
   options: { channel?: string; capturePath?: string; onlyJobId?: string } = {},
-) {
+): Promise<boolean> {
   const [row] = await db.$queryRaw<
     Array<{ job: Job | null }>
   >`SELECT claim_report_job(${options.onlyJobId ?? null}::uuid) AS job`;

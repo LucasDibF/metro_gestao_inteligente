@@ -3,7 +3,7 @@ import { boreholeSelectFor, type BoreholeReader } from './borehole-select';
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
-import { hierarchyInput } from './hierarchy-input';
+import type { HierarchyInput } from './hierarchy-input';
 
 @Injectable()
 export class HierarchyService {
@@ -57,7 +57,7 @@ export class HierarchyService {
     context: TenantContext,
     workId: string,
     borehole: boolean,
-    input: ReturnType<typeof hierarchyInput>,
+    input: HierarchyInput,
     id?: string,
   ) {
     try {
