@@ -69,6 +69,14 @@ Correções da auditoria de qualidade, sem novo teste nativo:
 
 As migrações `202611050001_flow_and_access_corrections` e `202611050002_change_own_password` foram aplicadas a `spt_test` por `psql`, com registro em `_prisma_migrations`, porque `prisma migrate deploy` travou sem mensagem nesta máquina. O motivo do travamento não foi identificado.
 
+Novo teste nativo sobre o commit `3b26c47` (correções da auditoria), com API e worker em `spt_test` e um `QA-01` vazio a cada aparelho:
+
+- iPhone 18 Pro/iOS 27.0: `field_flow_test.dart` e `photo_delivery_test.dart` aprovados. No servidor, o furo terminou em análise com 2 SPT, 2 camadas de solo e 1 fotografia.
+- iPad mini/iOS 27.0: `field_flow_test.dart` aprovado. `photo_delivery_test.dart` não chegou a rodar: o simulador falhou ao abrir o app nas três tentativas ("The log reader failed unexpectedly"), antes de qualquer passo do teste.
+- `flutter build ios --simulator` falha porque o `Flutter.framework` de debug não tem as duas arquiteturas (arm64 e x86_64). `flutter run` e `flutter drive` compilam só a arquitetura do Mac e funcionam.
+
+Ativação no banco principal local `spt` em 05/11/2026: backup prévio com `pg_dump -Fc` do contêiner (o cliente 16 do Mac recusa o servidor 17) em `work/db-backups/`, ignorado pelo Git. As migrações `202611040001_field_assignments`, `202611040002_mobile_sync`, `202611050001_flow_and_access_corrections` e `202611050002_change_own_password` foram aplicadas por `psql`, cada uma em transação com seu registro em `_prisma_migrations` e o mesmo checksum do arquivo. O esquema e as permissões das tabelas novas ficaram idênticos aos de `spt_test`. O único sondador do `spt` não tem obra atribuída; até um Administrador ou Comercial atribuir pelo web, o app mostra a lista vazia.
+
 Testes de aceite por situação:
 
 | Situação | Situação atual |
