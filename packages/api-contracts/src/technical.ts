@@ -24,6 +24,7 @@ export interface BoreholeRecord {
   reviewedAt: string | null;
   reviewerName: string | null;
   reviewerRegistration: string | null;
+  reviewerTitle: string | null;
   reviewNote: string | null;
   officialCoordinateId: string | null;
 }

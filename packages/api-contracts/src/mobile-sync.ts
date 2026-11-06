@@ -5,9 +5,10 @@ import type { BoreholeRecord, SptMetreRecord, TechnicalDetail } from './technica
 export interface MobileSnapshot {
   technical: Omit<TechnicalDetail, 'events' | 'hole'> & {
     events: never[];
-    hole: Omit<BoreholeRecord, 'reviewerName' | 'reviewerRegistration'> & {
+    hole: Omit<BoreholeRecord, 'reviewerName' | 'reviewerRegistration' | 'reviewerTitle'> & {
       reviewerName: null;
       reviewerRegistration: null;
+      reviewerTitle: null;
     };
   };
   files: BoreholeFiles;

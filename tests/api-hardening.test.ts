@@ -271,10 +271,12 @@ test('a failing queue stops the other loop and surfaces its error', async () => 
 test('reviewer identity columns are selected for engineers only', () => {
   const engineer = boreholeSelectFor({ role: 'ADMIN', additionalRoles: ['ENGINEER'] });
   assert.equal('reviewerName' in engineer, true);
+  assert.equal('reviewerTitle' in engineer, true);
   for (const role of ['OPERATOR', 'VIEWER', 'COMMERCIAL', 'ADMIN']) {
     const select = boreholeSelectFor({ role, additionalRoles: [] });
     assert.equal('reviewerName' in select, false);
     assert.equal('reviewerRegistration' in select, false);
+    assert.equal('reviewerTitle' in select, false);
   }
 });
 

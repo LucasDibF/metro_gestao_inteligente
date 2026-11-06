@@ -1,3 +1,5 @@
+import { ProfessionalProfileController } from './professional-profile/professional-profile.controller';
+import { ProfessionalProfileService } from './professional-profile/professional-profile.service';
 import { MobileSyncController } from './mobile/mobile-sync.controller';
 import { MobileController } from './mobile/mobile.controller';
 import { FieldAssignmentController } from './works/field-assignment.controller';
@@ -62,6 +64,7 @@ import { AuthGuard } from './auth/auth.guard';
     WorksController,
     HierarchyController,
     TrashController,
+    ProfessionalProfileController,
   ],
   providers: [
     FieldAssignmentService,
@@ -71,6 +74,7 @@ import { AuthGuard } from './auth/auth.guard';
     FilesService,
     PhotoStagingService,
     TechnicalService,
+    ProfessionalProfileService,
     InteractiveSheetService,
     SptService,
     TenantDatabaseService,

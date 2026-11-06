@@ -7,6 +7,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { AppModule } from '../../apps/api/src/app.module';
 import { hashPassword } from '../../apps/api/src/auth/password';
 import { TenantDatabaseService } from '../../apps/api/src/database/tenant-database.service';
+import { saveProfessionalProfile, completeReviewerCopy } from '../helpers/professional-profile';
 test('soil intervals, field data and engineering approval are isolated, versioned and invalidated atomically', async () => {
   const db = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.MIGRATION_DATABASE_URL }),
@@ -178,9 +179,8 @@ test('soil intervals, field data and engineering approval are isolated, versione
     const approval = {
       technicalVersion: h.technicalVersion,
       note: 'Conferidos os dados de campo e o perfil.',
-      reviewerName: 'Engenheira de teste',
-      reviewerRegistration: 'TESTE-123',
     };
+    await saveProfessionalProfile(base, tokens[1]);
     assert.equal((await call('/tecnico/aprovar', approval, 2)).status, 403);
     assert.equal(
       (await call('/tecnico/aprovar', { ...approval, technicalVersion: 1 }, 1)).status,
@@ -190,6 +190,14 @@ test('soil intervals, field data and engineering approval are isolated, versione
     h = await current();
     assert.equal(h.reviewState, 'APPROVED');
     assert.equal(h.approvedVersion, h.technicalVersion);
+    assert.deepEqual(
+      {
+        reviewerName: h.reviewerName,
+        reviewerRegistration: h.reviewerRegistration,
+        reviewerTitle: h.reviewerTitle,
+      },
+      completeReviewerCopy,
+    );
     assert.equal(
       (
         await call(
@@ -271,6 +279,7 @@ test('soil intervals, field data and engineering approval are isolated, versione
     await db.borehole.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.work.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.authSession.deleteMany({ where: { userId: { in: userIds } } });
+    await db.professionalProfile.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.membership.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.user.deleteMany({ where: { id: { in: userIds } } });
     await db.tenant.deleteMany({ where: { id: { in: tenantIds } } });

@@ -142,6 +142,7 @@ export async function apiFixture(
       await db.workAssignment.deleteMany({ where: { tenantId } });
       await db.work.deleteMany({ where: { tenantId } });
       await db.authSession.deleteMany({ where: { tenantId } });
+      await db.professionalProfile.deleteMany({ where: { tenantId } });
       await db.membership.deleteMany({ where: { tenantId } });
       await db.user.deleteMany({ where: { id: { in: records.map((r) => r.id) } } });
       await db.tenant.delete({ where: { id: tenantId } });

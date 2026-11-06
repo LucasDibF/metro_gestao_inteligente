@@ -127,7 +127,12 @@ export class MobileSyncController {
         technical: {
           ...technical,
           events: [],
-          hole: { ...technical.hole, reviewerName: null, reviewerRegistration: null },
+          hole: {
+            ...technical.hole,
+            reviewerName: null,
+            reviewerRegistration: null,
+            reviewerTitle: null,
+          },
         },
         files,
       };

@@ -7,6 +7,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { AppModule } from '../../apps/api/src/app.module';
 import { hashPassword } from '../../apps/api/src/auth/password';
 import { TenantDatabaseService } from '../../apps/api/src/database/tenant-database.service';
+import { saveProfessionalProfile } from '../helpers/professional-profile';
 test('responsibilities separate administration, commerce and engineering; operator writes lock after submission and reopen only on return', async () => {
   const db = new PrismaClient({
     adapter: new PrismaPg({ connectionString: process.env.MIGRATION_DATABASE_URL }),
@@ -177,13 +178,12 @@ test('responsibilities separate administration, commerce and engineering; operat
       ).status,
       201,
     );
+    await saveProfessionalProfile(base, tokens[1]);
     assert.equal(
       (
         await call(1, partialPath + '/tecnico/aprovar', {
           technicalVersion: partialState.technicalVersion,
           note: 'Conferido',
-          reviewerName: 'Teste',
-          reviewerRegistration: 'SEM VALIDADE',
         })
       ).status,
       201,
@@ -423,8 +423,6 @@ test('responsibilities separate administration, commerce and engineering; operat
         await call(0, path + '/tecnico/aprovar', {
           technicalVersion: current.technicalVersion,
           note: 'Não autorizado',
-          reviewerName: 'Admin',
-          reviewerRegistration: '123',
         })
       ).status,
       403,
@@ -577,6 +575,7 @@ test('responsibilities separate administration, commerce and engineering; operat
     await db.work.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.client.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.authSession.deleteMany({ where: { userId: { in: ids } } });
+    await db.professionalProfile.deleteMany({ where: { userId: { in: ids } } });
     await db.membership.deleteMany({ where: { userId: { in: ids } } });
     await db.user.deleteMany({ where: { id: { in: ids } } });
     await db.tenant.deleteMany({ where: { id: { in: tenantIds } } });

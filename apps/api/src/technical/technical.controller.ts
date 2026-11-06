@@ -54,7 +54,12 @@ export class TechnicalController {
       : {
           ...data,
           events: [],
-          hole: { ...data.hole, reviewerName: null, reviewerRegistration: null },
+          hole: {
+            ...data.hole,
+            reviewerName: null,
+            reviewerRegistration: null,
+            reviewerTitle: null,
+          },
         };
   }
   @Put() @Roles('ENGINEER', 'OPERATOR') fields(

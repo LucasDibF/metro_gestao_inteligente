@@ -64,3 +64,23 @@ export function validateReviewData(
   const missing = missingMetres(hole.executedDepthM, tests);
   if (missing.length) fail('SPT_METRES_MISSING', missing);
 }
+/** Soil layers must run without gaps from zero to the executed depth. */
+export function validateSoilCoverage(
+  executedDepthM: Depth,
+  layers: Array<{ fromM: Depth; toM: Depth }>,
+): void {
+  let end = 0;
+  for (const layer of layers) {
+    if (Number(layer.fromM) !== end)
+      throw new BadRequestException({
+        code: 'SOIL_PROFILE_GAP',
+        message: 'Soil profile must cover the full executed depth',
+      });
+    end = Number(layer.toM);
+  }
+  if (end !== Number(executedDepthM))
+    throw new BadRequestException({
+      code: 'SOIL_PROFILE_GAP',
+      message: 'Soil profile must cover executed depth',
+    });
+}
