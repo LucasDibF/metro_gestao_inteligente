@@ -139,6 +139,15 @@ class FieldSync {
     }
   }
 
+  /// The server locks field execution both when the hole left draft (sent for
+  /// review on the web, which keeps its version) and when the profile lost
+  /// access. Only the first one is a conflict with the local copy.
+  Future<void> _confirmStillDraft(String base) async {
+    final snapshot = await session.get('$base/mobile/snapshot');
+    final remote = (snapshot['technical'] as Json)['hole'] as Json;
+    if (remote['reviewState'] != 'DRAFT') throw const FieldConflict();
+  }
+
   /// Prepares [operation] once and sends it; the server checks the version
   /// again under the hole lock and answers 409 when it moved.
   Future<Json> _send(String base, Json operation, Json doc) async {
@@ -165,6 +174,9 @@ class FieldSync {
       if (failure.status == 409 && failure.code == _versionConflict) {
         throw const FieldConflict();
       }
+      if (failure.status == 403 && failure.code == _executionLocked) {
+        await _confirmStillDraft(base);
+      }
       rethrow;
     }
   }
@@ -187,6 +199,7 @@ class FieldSync {
 }
 
 const _versionConflict = 'RECORD_VERSION_CONFLICT';
+const _executionLocked = 'FIELD_EXECUTION_LOCKED';
 
 class _Refused implements Exception {
   const _Refused(this.reason);
