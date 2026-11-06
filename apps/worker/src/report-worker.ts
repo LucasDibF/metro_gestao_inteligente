@@ -106,7 +106,7 @@ export async function processNextReport(
     );
   } catch (error) {
     permanent ||= error instanceof PermanentReportError;
-    await db.$queryRaw`SELECT fail_report_job(${job.id}::uuid,${job.leaseToken}::uuid,${permanent})`;
+    // Logged first so the failure stays visible even when recording it in the database fails.
     console.error(
       JSON.stringify({
         event: 'report_job_failed',
@@ -118,6 +118,7 @@ export async function processNextReport(
         durationMs: Date.now() - started,
       }),
     );
+    await db.$queryRaw`SELECT fail_report_job(${job.id}::uuid,${job.leaseToken}::uuid,${permanent})`;
   } finally {
     if (heartbeat) clearInterval(heartbeat);
     storage?.close();

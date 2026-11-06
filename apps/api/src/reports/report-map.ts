@@ -13,19 +13,20 @@ export function parseMapView(value: unknown): MapView | null {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new BadRequestException('Invalid map view');
   const v = value as Record<string, unknown>;
+  const { centerX, centerY, spanM } = v;
   if (
     Object.keys(v).some((k) => !['centerX', 'centerY', 'spanM'].includes(k)) ||
-    ['centerX', 'centerY', 'spanM'].some((k) => typeof v[k] !== 'number' || !Number.isFinite(v[k]))
+    !isFiniteNumber(centerX) ||
+    !isFiniteNumber(centerY) ||
+    !isFiniteNumber(spanM)
   )
     throw new BadRequestException('Invalid map view');
-  if (
-    Math.abs(Number(v.centerX)) > 20000000 ||
-    Math.abs(Number(v.centerY)) > 20000000 ||
-    Number(v.spanM) < 1 ||
-    Number(v.spanM) > 20000000
-  )
+  if (Math.abs(centerX) > 20000000 || Math.abs(centerY) > 20000000 || spanM < 1 || spanM > 20000000)
     throw new BadRequestException('Invalid map extent');
-  return v as unknown as MapView;
+  return { centerX, centerY, spanM };
+}
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
 }
 export async function reportMap(
   tx: Prisma.TransactionClient,
