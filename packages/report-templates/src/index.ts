@@ -26,8 +26,15 @@ export function renderReport(
 ) {
   let body =
     (templateSince(snapshot.templateVersion, '0.8.10') ? reportCover(snapshot) : '') +
-    snapshot.holes.map((h) => engineeringProfiles(snapshot, h)).join('') +
-    photographicSheets(snapshot, photos) +
+    (templateSince(snapshot.templateVersion, '0.8.15')
+      ? snapshot.holes
+          .map(
+            (hole) =>
+              engineeringProfiles(snapshot, hole) + photographicSheets(snapshot, photos, hole.id),
+          )
+          .join('')
+      : snapshot.holes.map((hole) => engineeringProfiles(snapshot, hole)).join('') +
+        photographicSheets(snapshot, photos)) +
     locationSheets(snapshot, imagery);
   const total = (body.match(/__SHEET__/g) || []).length;
   let page = 0;

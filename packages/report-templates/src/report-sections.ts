@@ -10,9 +10,14 @@ function chunks<T>(values: T[], count: number): T[][] {
     values.slice(i * count, (i + 1) * count),
   );
 }
-export function photographicSheets(s: ReportSnapshot, photos: Record<string, string>) {
+export function photographicSheets(
+  s: ReportSnapshot,
+  photos: Record<string, string>,
+  boreholeId?: string,
+) {
   const sheets: string[] = [];
   for (const h of s.holes) {
+    if (boreholeId !== undefined && h.id !== boreholeId) continue;
     const selected = s.photos.filter((p) => p.boreholeId === h.id);
     let offset = 0;
     while (offset < selected.length) {

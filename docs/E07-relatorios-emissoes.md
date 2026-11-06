@@ -171,3 +171,9 @@ Integração autorizada após duas amostras reais: `packages/map-reference/src/i
 O enquadramento e a transformação são compartilhados com a prancha600×520. Janelas de leitura são limitadas, apenas por HTTP Range, com host/caminho fixos, sem redirecionamentos; qualquer canal RGB com zero é rejeitado como NoData. São consultadas no máximo seis cenas. Os limites de rede, memória, abrangência, cache e concorrência estão documentados no README. A execução de produção é JavaScript, sem dependência de Python. A imagem não tem garantia de ausência de nuvens ou precisão cadastral. A data/cena no PDF são as efetivamente usadas na geração, não uma promessa de congelamento da prévia anterior.
 
 Testes: 61 unitários, 14 integrações e seis de navegador passaram, além de tipos, build e formatação. A integração inclui emissão privada pelo worker com imagem sintética; o navegador cobre imagem disponível, falta de cobertura e recuperação. Layouts extensos foram testados com imagem e com avisos. O renderizador JavaScript também leu imagem real de Brasília; o relatório completo de demonstração foi rasterizado em quatro páginas e inspecionado, preservando texto selecionável, fonte, data e licença. O código mantém os perfis SPT e as fotografias no padrão aprovado. Imagens reais não são usadas nos testes automatizados dependentes de rede.
+
+## Ordem das folhas — modelo 0.8.15
+
+Novas emissões seguem a composição: capa; perfil e respectivas fotografias de cada furo, na ordem selecionada; croqui ao final. Continuações do perfil e do fotográfico permanecem junto do próprio furo. Furos sem fotografias não criam folha vazia. O modelo 0.8.14 e anteriores conservam a montagem histórica, sem alterar arquivos ou snapshots já emitidos.
+
+Validação: testes de sequência para dois furos, fotografias fora de ordem no snapshot, múltiplas folhas de fotos, perfil com continuação e furo sem foto. PDF fictício de seis páginas renderizado e inspecionado; geometria aprovada preservada.
