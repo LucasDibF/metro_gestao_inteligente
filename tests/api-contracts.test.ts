@@ -7,7 +7,9 @@ import type {
   BoreholeRecord,
   CoordinateRecord,
   Jsonified,
+  MobileOperationLookup,
   MobileOperationReceipt,
+  MobilePhotoReceipt,
   MobileSnapshot,
   ReportHistory,
   ReportIssueSummary,
@@ -19,6 +21,7 @@ import type {
   TechnicalDetail,
 } from '@spt/api-contracts';
 import type { BoreholeFilesRows } from '../apps/api/src/files/files-rows';
+import type { PhotoStagingService } from '../apps/api/src/files/photo-staging.service';
 import type {
   MobileOperationResultRows,
   MobileReceiptRows,
@@ -31,6 +34,16 @@ import type {
   ReportOptionsRows,
 } from '../apps/api/src/reports/report-rows';
 import type { SptMetreRows, TechnicalDetailRows } from '../apps/api/src/technical/technical-rows';
+
+/** What the photo route commits; its receipt is stored and replayed as JSON. */
+type PhotoCommitRows = Awaited<ReturnType<PhotoStagingService['commit']>>;
+/** A stored receipt is the JSON of the operation or photo receipt it answered first. */
+interface MobileLookupRows {
+  receipt:
+    | Jsonified<MobileReceiptRows<MobileOperationResultRows>>
+    | Jsonified<MobileReceiptRows<PhotoCommitRows>>
+    | null;
+}
 
 /** True only when each type is assignable to the other. */
 type Same<Left, Right> = [Left] extends [Right] ? ([Right] extends [Left] ? true : false) : false;
@@ -49,6 +62,8 @@ contractMatches<Same<Jsonified<MobileSnapshotRows>, MobileSnapshot>>();
 contractMatches<
   Same<Jsonified<MobileReceiptRows<MobileOperationResultRows>>, MobileOperationReceipt>
 >();
+contractMatches<Same<Jsonified<MobileReceiptRows<PhotoCommitRows>>, MobilePhotoReceipt>>();
+contractMatches<Same<Jsonified<MobileLookupRows>, MobileOperationLookup>>();
 contractMatches<Same<Jsonified<Report>, ReportRecord>>();
 contractMatches<Same<Jsonified<ReportIssueRow>, ReportIssueSummary>>();
 contractMatches<Same<Jsonified<ReportOptionsRows>, ReportOptionsPage>>();
