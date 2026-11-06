@@ -16,7 +16,7 @@ O caso convencional 4/6/8 em três avanços de 15cm resulta em N-SPT 14. Registr
 
 A verificação da integração INPE passou em 61 testes unitários, 14 de integração e seis de navegador, incluindo fotografias assíncronas, aprovação, composição, prévia/ajuste de croqui e download de PDF. O modelo/template atual é 0.8.16; o worker recusa uma versão de template incompatível no snapshot. A troca de perfil dedicada passou na verificação local: login automático, ENGINEER → VIEWER → ADMIN, ausência de exceções de página e de overflow móvel; a verificação HTTP cobriu os quatro perfis, rejeitou papel inválido com 400 e restaurou o perfil original. Não há publicação solicitada nesta fase.
 
-Plano consolidado, critérios e dependências: [MVP-001](docs/MVP-001.md). Os módulos de arquivos/PDF já existem; os pacotes de contratos/tipos compartilhados continuam reservados. Leia as limitações de [E04](docs/E04-ensaios-dados.md), [E05](docs/E05-revisao.md), [E06](docs/E06-arquivos-coordenadas.md) e [E07](docs/E07-relatorios-emissoes.md).
+Plano consolidado, critérios e dependências: [MVP-001](docs/MVP-001.md). Os módulos de arquivos/PDF já existem; o pacote `api-contracts` descreve o JSON de sincronização do app, dados técnicos, arquivos e relatórios, e `shared-types` continua reservado. Leia as limitações de [E04](docs/E04-ensaios-dados.md), [E05](docs/E05-revisao.md), [E06](docs/E06-arquivos-coordenadas.md) e [E07](docs/E07-relatorios-emissoes.md).
 
 ## Desenvolvimento local
 
