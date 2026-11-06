@@ -31,6 +31,7 @@ import { TechnicalService } from '../technical/technical.service';
 import { SptService } from '../spt/spt.service';
 import { parseSpt } from '../spt/spt-input';
 import { FilesService } from '../files/files.service';
+import { PhotoStagingService } from '../files/photo-staging.service';
 import { technicalInput } from '../technical/technical-input';
 import { MobileOperationResultRows, MobileReceiptRows, MobileSnapshotRows } from './mobile-rows';
 
@@ -42,6 +43,7 @@ export class MobileSyncController {
     @Inject(TechnicalService) private readonly technical: TechnicalService,
     @Inject(SptService) private readonly spt: SptService,
     @Inject(FilesService) private readonly files: FilesService,
+    @Inject(PhotoStagingService) private readonly photos: PhotoStagingService,
   ) {}
 
   private async requireAssignment(
@@ -247,22 +249,22 @@ export class MobileSyncController {
     });
     if (replay) return replay.response;
     // Image validation and the upload stay outside the transaction that locks the work.
-    const staged = await this.files.stagePhoto(c, w, file, v.caption, v.purpose);
+    const staged = await this.photos.stage(c, w, file, v.caption, v.purpose);
     let referenced = false;
     try {
       const response = await this.receipt(c, w, b, operationId, request, async (tx) => {
         const current = await this.technical.parent(tx, c, w, b);
         if (staleVersion(current.technicalVersion)) throw conflict();
-        const result = await this.files.commitPhoto(tx, c, w, b, staged, operationId);
+        const result = await this.photos.commit(tx, c, w, b, staged, operationId);
         referenced = true;
         const state = await this.technical.parent(tx, c, w, b);
         return { result, technicalVersion: state.technicalVersion, reviewState: state.reviewState };
       });
       // A concurrent retry committed first: its receipt won and this object is an orphan.
-      if (!referenced) await this.files.abandonPhoto(staged);
+      if (!referenced) await this.photos.abandon(staged);
       return response;
     } catch (error) {
-      throw await this.files.abandonPhoto(staged, error);
+      throw await this.photos.abandon(staged, error);
     }
   }
 }

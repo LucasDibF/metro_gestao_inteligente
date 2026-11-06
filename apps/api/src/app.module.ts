@@ -11,6 +11,7 @@ import { OperationsController } from './operations/operations.controller';
 import { ReportsService } from './reports/reports.service';
 import { ReportsController } from './reports/reports.controller';
 import { FilesService } from './files/files.service';
+import { PhotoStagingService } from './files/photo-staging.service';
 import { FilesController } from './files/files.controller';
 import { TechnicalService } from './technical/technical.service';
 import { TechnicalController } from './technical/technical.controller';
@@ -68,6 +69,7 @@ import { AuthGuard } from './auth/auth.guard';
     { provide: PrismaClient, useClass: DatabaseService },
     ReportsService,
     FilesService,
+    PhotoStagingService,
     TechnicalService,
     InteractiveSheetService,
     SptService,
