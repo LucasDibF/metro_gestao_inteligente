@@ -52,6 +52,12 @@ Regras de cada campo (erro 400 `PROFESSIONAL_PROFILE_INVALID` com `field` indica
 
 Caracteres de controle são recusados em todos os campos.
 
+### Na interface web
+
+O menu mostra **Perfil profissional** junto de Segurança da conta, só para quem tem ENGINEER. A página tem a seção Responsável técnico (nome completo, título profissional, número do CREA e UF do CREA) e a seção Contato (telefone e email, opcionais), que avisa que esses dois não saem no PDF. O selo indica perfil completo ou incompleto, e o perfil incompleto lista o que falta para aprovar. O formulário confere os mesmos formatos da API antes de enviar e mostra cada erro no próprio campo, inclusive o `field` devolvido pela API; o conflito de versão oferece recarregar o perfil. Enquanto há alteração não salva, o menu fica bloqueado como nas outras edições.
+
+Na Revisão técnica de um furo em revisão, os campos de nome e registro deram lugar ao bloco Responsável técnico na aprovação, só leitura, com nome, título e `CREA-UF número` e o botão Editar perfil. Sem perfil completo, Aprovar tecnicamente fica desabilitado, a mensagem diz o que falta e Completar perfil profissional abre a página, que oferece voltar à revisão do mesmo furo. Se a API responder `PROFESSIONAL_PROFILE_INCOMPLETE` (perfil alterado em outra aba), o formulário de aprovação fecha e o bloco volta a mostrar o que falta. Depois de aprovado, o furo mostra a cópia gravada (`Responsável: nome · título · Registro: CREA-UF número`), e não o perfil atual. `tests/browser/professional-profile.spec.ts` cobre esse fluxo, os perfis sem acesso à página e o layout em 390 px.
+
 O MVP permite que o mesmo ENGINEER prepare e aprove os dados; não há regra de dupla revisão/separação de funções implementada. ADMIN sem perfil ENGINEER não aprova nem solicita emissão.
 
 ## Consistência para envio/aprovação
