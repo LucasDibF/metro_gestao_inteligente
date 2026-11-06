@@ -7,13 +7,20 @@ test('structured measurements reject invented options and preserve measured zero
     depthM: '1',
     advances: [0, 1, 2].map((blows) => ({ blows, penetrationMm: 150 })),
     soil: { soilType: 'Areia', description: 'Fina.', soilColor: 'Marrom', soilMoisture: 'Úmida' },
-    fieldDetails: { executionMethod: 'SP_TH', sampleRecovery: 'PARCIAL' },
+    fieldDetails: { executionMethod: 'SP_TH' },
     technicalVersion: 1,
   };
   const parsed = parseSpt(body, false);
   assert.equal(parsed.advances[0].blows, 0);
   assert.equal(parsed.soil?.soilColor, 'Marrom');
-  assert.deepEqual(parsed.fieldDetails, { executionMethod: 'SP_TH', sampleRecovery: 'PARCIAL' });
+  assert.equal(parsed.soil?.soilMoisture, 'Úmida');
+  assert.throws(() =>
+    parseSpt(
+      { ...body, fieldDetails: { executionMethod: 'SP_TH', sampleRecovery: 'PARCIAL' } },
+      false,
+    ),
+  );
+  assert.deepEqual(parsed.fieldDetails, { executionMethod: 'SP_TH' });
   assert.throws(() => parseSpt({ ...body, fieldDetails: { executionMethod: 'unknown' } }, false));
   assert.throws(() =>
     parseSpt({ ...body, soil: { ...body.soil, soilMoisture: 'invented' } }, false),
@@ -29,6 +36,7 @@ test('field checklist distinguishes review blockers, issuance and recommendation
     approvedVersion: null,
   };
   const tests = [
+    { depthM: '1', advances: [], result: { status: 'NOT_TESTED' } },
     {
       depthM: '2',
       advances: [{ blows: 30, penetrationMm: 60 }],
@@ -75,4 +83,27 @@ test('first metre stores only soil without inventing blows or NSPT; description 
     0,
   );
   assert.ok(checks.filter((c) => c.stage === 'review').every((c) => c.complete));
+});
+
+test('field checklist flags metres without a record and accepts interruption without advances', () => {
+  const hole = {
+    fieldDate: '2026-11-01',
+    executedDepthM: '3',
+    officialCoordinateId: null,
+    reviewState: 'DRAFT',
+    technicalVersion: 1,
+    approvedVersion: null,
+  };
+  const layers = [{ fromM: '0', toM: '3' }];
+  const interrupted = { advances: [], result: { status: 'INTERRUPTED' } };
+  const item = (depths: number[], id: string) =>
+    fieldChecklist(
+      hole,
+      depths.map((d) => ({ ...interrupted, depthM: String(d) })),
+      layers,
+      0,
+    ).find((i) => i.id === id)?.complete;
+  assert.equal(item([1, 3], 'metres'), false);
+  assert.equal(item([1, 2, 3], 'metres'), true);
+  assert.equal(item([1, 2, 3], 'advances'), true);
 });

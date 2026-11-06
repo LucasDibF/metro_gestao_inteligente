@@ -1,0 +1,32 @@
+BEGIN;
+DO $$ BEGIN IF current_database()<>'spt_test' THEN RAISE EXCEPTION 'Use spt_test only'; END IF; END $$;
+DO $$
+DECLARE t uuid:=gen_random_uuid(); u uuid:=gen_random_uuid(); op uuid:=gen_random_uuid(); otherop uuid:=gen_random_uuid(); w uuid:=gen_random_uuid(); hidden uuid:=gen_random_uuid(); n integer;
+BEGIN
+ INSERT INTO tenants(id,name)VALUES(t,'Assignment test');
+ INSERT INTO users(id,email,password_hash)VALUES(u,u::text||'@example.invalid','unused'),(op,op::text||'@example.invalid','unused'),(otherop,otherop::text||'@example.invalid','unused');
+ INSERT INTO memberships(tenant_id,user_id,role)VALUES(t,u,'COMMERCIAL'),(t,op,'OPERATOR'),(t,otherop,'OPERATOR');
+ INSERT INTO works(id,tenant_id,name)VALUES(w,t,'Assigned'),(hidden,t,'Unassigned');
+ PERFORM set_config('app.user_id',u::text,true),set_config('app.tenant_id',t::text,true);
+ SET LOCAL ROLE spt_runtime;
+ INSERT INTO work_assignments(work_id,tenant_id,operator_id,assigned_by)VALUES(w,t,op,u);
+ IF jsonb_array_length(field_operators())<>2 THEN RAISE EXCEPTION 'Operator selection failed'; END IF;
+ PERFORM set_config('app.user_id',op::text,true);
+ SELECT count(*) INTO n FROM works WHERE tenant_id=t;
+ IF n<>1 THEN RAISE EXCEPTION 'Operator visibility failed: %',n; END IF;
+ SELECT count(*) INTO n FROM works WHERE id=hidden;
+ IF n<>0 THEN RAISE EXCEPTION 'Unassigned work leaked'; END IF;
+ UPDATE work_assignments SET active=false WHERE work_id=w;
+ GET DIAGNOSTICS n=ROW_COUNT;
+ IF n<>0 THEN RAISE EXCEPTION 'Operator changed assignment'; END IF;
+ PERFORM set_config('app.user_id',otherop::text,true);
+ SELECT count(*) INTO n FROM works WHERE tenant_id=t;
+ IF n<>0 THEN RAISE EXCEPTION 'Other operator saw assignment'; END IF;
+ PERFORM set_config('app.user_id',u::text,true);
+ UPDATE work_assignments SET active=false,version=version+1 WHERE work_id=w;
+ PERFORM set_config('app.user_id',op::text,true);
+ SELECT count(*) INTO n FROM works WHERE tenant_id=t;
+ IF n<>0 THEN RAISE EXCEPTION 'Revoked work still visible'; END IF;
+ RESET ROLE;
+END $$;
+ROLLBACK;

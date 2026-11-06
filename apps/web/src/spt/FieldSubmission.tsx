@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { FieldChecklist, type ChecklistItem } from './FieldChecklist';
 
 type SubmissionData = {
-  hole: { technicalVersion: number; reviewState: string; reviewNote: string | null };
+  hole: { technicalVersion: number; reviewState: string };
   checklist: ChecklistItem[];
 };
 export function FieldSubmission({
@@ -102,7 +102,10 @@ export function FieldSubmission({
             className="secondary"
             type="button"
             disabled={busy}
-            onClick={() => setRevision((v) => v + 1)}
+            onClick={() => {
+              setError('');
+              setRevision((v) => v + 1);
+            }}
           >
             Atualizar conferência
           </Button>
@@ -114,7 +117,6 @@ export function FieldSubmission({
         engenheiro.
       </p>
       <FieldChecklist items={data.checklist.filter((item) => item.stage === 'review')} />
-      {data.hole.reviewNote ? <p>Últimas orientações: {data.hole.reviewNote}</p> : null}
       {editing ? (
         <form onSubmit={submit} className="panel">
           <fieldset disabled={busy}>

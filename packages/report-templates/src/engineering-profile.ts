@@ -1,9 +1,11 @@
+import { templateSince } from './template-version';
 import {
   sptGraphReading,
   classifySoilState,
   formatSoilDescription,
+  soilGroup,
 } from '@spt/geotechnical-engine';
-import type { ReportSnapshot } from './index';
+import type { ReportSnapshot } from './types';
 import { escapeHtml as e } from './html';
 import { numeric as n, sheetHeader, sheetFooter } from './sheet-layout';
 type Hole = ReportSnapshot['holes'][number];
@@ -90,6 +92,7 @@ export function sampledLayers(
   classify = false,
   commas = false,
   includeInitialSoil = false,
+  singleGroupOnly = false,
 ): Hole['layers'] {
   const intervals = h.tests
     .filter(
@@ -102,13 +105,23 @@ export function sampledLayers(
       return { from: Math.max(0, depth - 1), to: depth === 0 ? 1 : depth, result: t.result };
     })
     .sort((a, b) => a.from - b.from);
+  // One N-SPT cannot describe two soil groups in the same metre; the screen also leaves it unclassified.
+  const mixedSoil = (interval: { from: number; to: number }) => {
+    const groups = h.layers
+      .filter((l) => Number(l.fromM) < interval.to && Number(l.toM) > interval.from)
+      .map((l) => soilGroup(l.soilType));
+    return groups.includes(null) || new Set(groups).size > 1;
+  };
   const pieces: Hole['layers'] = [];
   for (const layer of h.layers) {
     for (const interval of intervals) {
       const from = Math.max(Number(layer.fromM), interval.from);
       const to = Math.min(Number(layer.toM), interval.to, Number(h.executedDepthM));
       if (to > from) {
-        const state = classify ? classifySoilState(layer.soilType, interval.result) : null;
+        const state =
+          classify && !(singleGroupOnly && mixedSoil(interval))
+            ? classifySoilState(layer.soilType, interval.result)
+            : null;
         pieces.push({
           ...layer,
           description:
@@ -173,16 +186,7 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
       ? `<div class="document-footer"><footer class="responsibility"><div><b>CONFERÊNCIA INTERATIVA — SEM EMISSÃO</b><br>Dados da versão técnica ${h.technicalVersion}. Consulte os registros e pendências antes da aprovação.</div></footer></div>`
       : sheetFooter(s, h);
 
-  const coloredSums = [
-    '0.8.4',
-    '0.8.5',
-    '0.8.6',
-    '0.8.7',
-    '0.8.8',
-    '0.8.9',
-    '0.8.10',
-    '0.8.11',
-  ].includes(s.templateVersion);
+  const coloredSums = templateSince(s.templateVersion, '0.8.4');
   const initialColor = '#2155b5';
   const finalColor = coloredSums ? '#c62828' : '#cf6500';
   const termination = profileTermination(h);
@@ -203,19 +207,32 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
     const depthBaseline = (depth: number) => y(depth) - 8;
     const recordBaseline = (depth: number) => (depth === 0 ? top + 9 : depthBaseline(depth));
     const endRow = Math.min(to, termination.row);
-    const fullGrid = ['0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion);
+    const fullGrid = templateSince(s.templateVersion, '0.8.7');
     const activeBottom = fullGrid ? bottom : y(endRow);
     const ticks = Array.from({ length: 20 }, (_, i) => from + i + 1).filter((d) => d <= endRow);
     const displayDepth = (d: number) =>
       termination.partial && d === termination.row ? termination.depth : d;
     const layers = sampledLayers(
       h,
-      ['0.8.5', '0.8.6', '0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion),
-      ['0.8.6', '0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion),
-      ['0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion),
+      templateSince(s.templateVersion, '0.8.5'),
+      templateSince(s.templateVersion, '0.8.6'),
+      templateSince(s.templateVersion, '0.8.7'),
+      templateSince(s.templateVersion, '0.8.14'),
     ).filter((l) => Number(l.fromM) < to && Number(l.toM) > from);
-    const continuousGraph = ['0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion);
-    const partialGraph = ['0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion);
+    const shrinkLayerText = templateSince(s.templateVersion, '0.8.16');
+    // The partial terminal metre is drawn as a full row labelled with the measured depth;
+    // from 0.8.16 its layers stretch across that row instead of the few real centimetres.
+    const partialRowStart = termination.row - 1;
+    const layerRowDepth = (d: number) =>
+      shrinkLayerText &&
+      termination.partial &&
+      d > partialRowStart &&
+      termination.depth > partialRowStart
+        ? partialRowStart +
+          Math.min(1, (d - partialRowStart) / (termination.depth - partialRowStart))
+        : d;
+    const continuousGraph = templateSince(s.templateVersion, '0.8.9');
+    const partialGraph = templateSince(s.templateVersion, '0.8.8');
     const largest = Math.max(
       50,
       ...(partialGraph
@@ -347,21 +364,29 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
        : soil.startsWith('argila')
          ? 'clay'
          : 'other';
-     const yy = y(Math.max(from, Number(l.fromM))),
-       end = y(Math.min(to, Number(l.toM)));
-     const words = wrap(
-         ['0.8.6', '0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion)
-           ? formatSoilDescription([l.soilType, l.description])
-           : `${l.soilType}. ${l.description}`,
-         230,
-       ),
-       limit = Math.max(0, 1 + Math.floor((end - yy - 13) / 12));
+     const yy = y(layerRowDepth(Math.max(from, Number(l.fromM)))),
+       end = y(layerRowDepth(Math.min(to, Number(l.toM))));
+     const description = templateSince(s.templateVersion, '0.8.6')
+       ? formatSoilDescription([l.soilType, l.description])
+       : `${l.soilType}. ${l.description}`;
+     // From 0.8.16 a description that does not fit shrinks before moving to a supplement sheet.
+     const fitted = (size: number) => {
+       const words = wrap(description, (230 * 10) / size),
+         limit = Math.max(0, 1 + Math.floor((end - yy - size * 1.3) / (size * 1.2)));
+       return { size, words, limit };
+     };
+     let layout = fitted(10);
+     if (shrinkLayerText)
+       for (let size = 9.5; layout.words.length > layout.limit && size >= 6; size -= 0.5)
+         layout = fitted(size);
+     const { size, words, limit } = layout;
+     const lineHeight = size * 1.2;
      const shown = words.slice(0, limit);
      if (words.length > limit) {
        overflows.push(l);
        if (limit > 0) shown[limit - 1] = 'Descrição integral: ver complemento.';
      }
-     return `<g class="sampled-layer" data-from-m="${l.fromM}" data-to-m="${l.toM}"${options.interactive ? ` data-sheet-selection="layer" role="button" tabindex="0" aria-label="Consultar camada de ${e(l.fromM)} a ${e(l.toM)} m"` : ''}>${options.interactive ? `<rect class="interaction-hit" x="29" y="${yy}" width="301" height="${end - yy}" fill="transparent"/>` : ''}<rect x="29" y="${yy}" width="26" height="${end - yy}" fill="url(#${pattern})"/><path d="M28 ${end}H56M90 ${end}H330" stroke="#777" stroke-width=".7"/>${shown.map((line, i) => text(210, ['0.8.3', '0.8.4', '0.8.5', '0.8.6', '0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion) ? (yy + end) / 2 + (i - (shown.length - 1) / 2) * 12 : yy + 11 + i * 12, line, 'middle', `font-size="10"${['0.8.3', '0.8.4', '0.8.5', '0.8.6', '0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion) ? ' dominant-baseline="central"' : ''}`)).join('')}</g>`;
+     return `<g class="sampled-layer" data-from-m="${l.fromM}" data-to-m="${l.toM}"${options.interactive ? ` data-sheet-selection="layer" role="button" tabindex="0" aria-label="Consultar camada de ${e(l.fromM)} a ${e(l.toM)} m"` : ''}>${options.interactive ? `<rect class="interaction-hit" x="29" y="${yy}" width="301" height="${end - yy}" fill="transparent"/>` : ''}<rect x="29" y="${yy}" width="26" height="${end - yy}" fill="url(#${pattern})"/><path d="M28 ${end}H56M90 ${end}H330" stroke="#777" stroke-width=".7"/>${shown.map((line, i) => text(210, templateSince(s.templateVersion, '0.8.3') ? (yy + end) / 2 + (i - (shown.length - 1) / 2) * lineHeight : yy + 11 + i * 12, line, 'middle', `font-size="${size}"${templateSince(s.templateVersion, '0.8.3') ? ' dominant-baseline="central"' : ''}`)).join('')}</g>`;
    })
    .join('')}
  ${visible
@@ -388,21 +413,7 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
    })
    .join('')}
 
- ${([
-   '0.8.2',
-   '0.8.3',
-   '0.8.4',
-   '0.8.5',
-   '0.8.6',
-   '0.8.7',
-   '0.8.8',
-   '0.8.9',
-   '0.8.10',
-   '0.8.11',
- ].includes(s.templateVersion)
-   ? []
-   : visible
- )
+ ${(templateSince(s.templateVersion, '0.8.2') ? [] : visible)
    .filter((t) => t.result.nSpt === null)
    .map((t) =>
      text(
@@ -427,19 +438,7 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
  }
 
  ${text(646, top + 25, 'NI')}${
-   [
-     '0.8.1',
-     '0.8.2',
-     '0.8.3',
-     '0.8.4',
-     '0.8.5',
-     '0.8.6',
-     '0.8.7',
-     '0.8.8',
-     '0.8.9',
-     '0.8.10',
-     '0.8.11',
-   ].includes(s.templateVersion) && visible.some((t) => t.fieldDetails?.executionMethod)
+   templateSince(s.templateVersion, '0.8.1') && visible.some((t) => t.fieldDetails?.executionMethod)
      ? visible
          .map((t) => {
            const label =
@@ -478,12 +477,25 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
       overflows.length || moveObservations
         ? '<p class="excel-note">Descrições e observações integrais: ver complemento técnico identificado por intervalo de profundidade.</p>'
         : '';
-    const body = `${header(`Perfil individual · ${from}–${to} m · Trecho ${page + 1}/${pageCount}`)}<table class="excel-meta"><tr><td colspan="2"><b>Coordenadas UTM:</b> ${options.coordinateMissing ? 'Não informadas' : `E ${n(h.officialCoordinate.eastingM)} · N ${n(h.officialCoordinate.northingM)} · ${h.officialCoordinate.zone}${e(h.officialCoordinate.hemisphere)} · ${e(h.officialCoordinate.datum)}`}</td><td>Início: NI · Término: NI</td></tr><tr><td>Tipologia: NI · Km: NI · Lote: NI</td><td>Posição / eixo: NI · Desloc.: NI</td><td>Fiscal: NI</td></tr></table>${svg}${supplementNotice}<table class="excel-limit"><tr><td style="width:30%"><b>Limite:</b> ${n(termination.depth)} m</td><td><b>Motivo da paralisação:</b> não registrado</td></tr></table><div class="excel-bottom"><table><thead><tr><th colspan="3">PROFUNDIDADE DO NÍVEL D’ÁGUA</th></tr><tr><th>Leitura</th><th>Data / hora</th><th>Prof. (m)</th></tr></thead><tbody><tr><td>Cadastrada*</td><td>NI</td><td>${h.waterLevelM === null ? 'NI' : n(h.waterLevelM)}</td></tr><tr><td>Inicial</td><td>NI</td><td>NI</td></tr><tr><td>Após 12/24 h</td><td>NI</td><td>NI</td></tr></tbody></table><div class="excel-legend"><b>LEGENDA / AVANÇOS</b><p><span style="color:#2155b5">– – 30 cm iniciais</span><br><span style="color:${coloredSums ? finalColor : '#b95600'}">— 30 cm finais (N-SPT)</span><br>Trado: NI · Lavagem: NI<br>Prof. revestimento: NI</p></div><table><thead><tr><th colspan="2">LAVAGEM POR TEMPO (30 min)</th></tr><tr><th>Tempo</th><th>Avanço (cm)</th></tr></thead><tbody>${['0 a 10 min', '10 a 20 min', '20 a 30 min'].map((t) => `<tr><td>${t}</td><td>NI</td></tr>`).join('')}</tbody></table></div><p class="excel-note">* Nível d’água cadastrado: ${water}. O cadastro atual não identifica o momento da leitura.</p><p class="excel-note">NI = não informado; NE = não encontrado (não inferido). SP: percussão · TC: trado concha · TH: trado helicoidal · CA: circulação de água. Avanços normais: golpes; especiais: golpes/cm. ${partialGraph && !continuousGraph ? 'Losangos: leituras parciais em golpes/cm, sem normalização.' : ''} ${['0.8.2', '0.8.3', '0.8.4', '0.8.5', '0.8.6', '0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion) ? '' : 'ND: N-SPT não definido. '}Hachuras representativas, sem indicar mineralogia ou cor real. Equipamento e conformidade normativa: não confirmados.</p>${moveObservations ? '' : observations.map((note) => `<p class="excel-note">${e(note)}</p>`).join('')}${footer()}`;
+    const recordedStop = templateSince(s.templateVersion, '0.8.14')
+      ? [...h.tests].sort((a, b) => Number(a.depthM) - Number(b.depthM)).at(-1)
+      : undefined;
+    const stopReason = recordedStop?.interruptionReason?.trim()
+      ? recordedStop.interruptionReason.trim().length <= 90
+        ? e(recordedStop.interruptionReason.trim())
+        : `ver observações a ${n(displayDepth(Number(recordedStop.depthM)))} m`
+      : 'não registrado';
+    const measuredNotice =
+      templateSince(s.templateVersion, '0.8.14') &&
+      visible.some((t) => t.result.nSpt === null && t.advances.length > 0)
+        ? 'Metros sem N-SPT definido aparecem na curva com a leitura medida, que não é N-SPT. '
+        : '';
+    const body = `${header(`Perfil individual · ${from}–${to} m · Trecho ${page + 1}/${pageCount}`)}<table class="excel-meta"><tr><td colspan="2"><b>Coordenadas UTM:</b> ${options.coordinateMissing ? 'Não informadas' : `E ${n(h.officialCoordinate.eastingM)} · N ${n(h.officialCoordinate.northingM)} · ${h.officialCoordinate.zone}${e(h.officialCoordinate.hemisphere)} · ${e(h.officialCoordinate.datum)}`}</td><td>Início: NI · Término: NI</td></tr><tr><td>Tipologia: NI · Km: NI · Lote: NI</td><td>Posição / eixo: NI · Desloc.: NI</td><td>Fiscal: NI</td></tr></table>${svg}${supplementNotice}<table class="excel-limit"><tr><td style="width:30%"><b>Limite:</b> ${n(termination.depth)} m</td><td><b>Motivo da paralisação:</b> ${stopReason}</td></tr></table><div class="excel-bottom"><table><thead><tr><th colspan="3">PROFUNDIDADE DO NÍVEL D’ÁGUA</th></tr><tr><th>Leitura</th><th>Data / hora</th><th>Prof. (m)</th></tr></thead><tbody><tr><td>Cadastrada*</td><td>NI</td><td>${h.waterLevelM === null ? 'NI' : n(h.waterLevelM)}</td></tr><tr><td>Inicial</td><td>NI</td><td>NI</td></tr><tr><td>Após 12/24 h</td><td>NI</td><td>NI</td></tr></tbody></table><div class="excel-legend"><b>LEGENDA / AVANÇOS</b><p><span style="color:#2155b5">– – 30 cm iniciais</span><br><span style="color:${coloredSums ? finalColor : '#b95600'}">— 30 cm finais (N-SPT)</span><br>Trado: NI · Lavagem: NI<br>Prof. revestimento: NI</p></div><table><thead><tr><th colspan="2">LAVAGEM POR TEMPO (30 min)</th></tr><tr><th>Tempo</th><th>Avanço (cm)</th></tr></thead><tbody>${['0 a 10 min', '10 a 20 min', '20 a 30 min'].map((t) => `<tr><td>${t}</td><td>NI</td></tr>`).join('')}</tbody></table></div><p class="excel-note">* Nível d’água cadastrado: ${water}. O cadastro atual não identifica o momento da leitura.</p><p class="excel-note">NI = não informado; NE = não encontrado (não inferido). SP: percussão · TC: trado concha · TH: trado helicoidal · CA: circulação de água. Avanços normais: golpes; especiais: golpes/cm. ${partialGraph && !continuousGraph ? 'Losangos: leituras parciais em golpes/cm, sem normalização.' : ''} ${templateSince(s.templateVersion, '0.8.2') ? '' : 'ND: N-SPT não definido. '}${measuredNotice}Hachuras representativas, sem indicar mineralogia ou cor real. Equipamento e conformidade normativa: não confirmados.</p>${moveObservations ? '' : observations.map((note) => `<p class="excel-note">${e(note)}</p>`).join('')}${footer()}`;
     // Fixed line budgets make each continuation an explicit, identified sheet.
     // Full descriptions are repeated here, never truncated to the profile interval.
     const continuationLines = overflows.flatMap((l) => [
       ...wrap(
-        `${n(l.fromM)}–${n(l.toM)} m: ${['0.8.6', '0.8.7', '0.8.8', '0.8.9', '0.8.10', '0.8.11'].includes(s.templateVersion) ? formatSoilDescription([l.soilType, l.description]) : `${l.soilType}. ${l.description}`}`,
+        `${n(l.fromM)}–${n(l.toM)} m: ${templateSince(s.templateVersion, '0.8.6') ? formatSoilDescription([l.soilType, l.description]) : `${l.soilType}. ${l.description}`}`,
         610,
       ),
       '',

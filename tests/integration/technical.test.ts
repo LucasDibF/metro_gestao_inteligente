@@ -151,8 +151,20 @@ test('soil intervals, field data and engineering approval are isolated, versione
       ],
     };
     assert.equal((await call('/ensaios', spt)).status, 201);
+    const missing = await call('/tecnico/enviar-revisao', {
+      technicalVersion: (await current()).technicalVersion,
+      note: 'Faltam metros.',
+    });
+    assert.equal(missing.status, 400);
+    assert.equal(((await missing.json()) as { code: string }).code, 'SPT_METRES_MISSING');
+    let lastMetre = { id: '', version: 0 };
+    for (const depthM of ['2', '3', '4', '5']) {
+      const created = await call('/ensaios', { ...spt, depthM });
+      assert.equal(created.status, 201);
+      lastMetre = (await created.json()) as { id: string; version: number };
+    }
     let h = await current();
-    assert.equal(h.technicalVersion, 5);
+    assert.equal(h.technicalVersion, 9);
     assert.equal(
       (
         await call('/tecnico/enviar-revisao', {
@@ -192,7 +204,7 @@ test('soil intervals, field data and engineering approval are isolated, versione
     h = await current();
     assert.equal(h.reviewState, 'IN_REVIEW');
     assert.equal(h.approvedVersion, null);
-    assert.equal(h.technicalVersion, 6);
+    assert.equal(h.technicalVersion, 10);
     assert.equal(
       (await call('/tecnico/camadas/' + layer.id, { ...input, version: layer.version }, 0, 'PUT'))
         .status,
@@ -209,9 +221,14 @@ test('soil intervals, field data and engineering approval are isolated, versione
     );
     const results = await Promise.all([
       call('/tecnico/aprovar', { ...approval, technicalVersion: h.technicalVersion }, 1),
-      call('/ensaios', { ...spt, depthM: '2' }),
+      call(
+        '/ensaios/' + lastMetre.id,
+        { ...spt, depthM: '5', version: lastMetre.version },
+        0,
+        'PUT',
+      ),
     ]);
-    assert.equal(results[1].status, 201);
+    assert.equal(results[1].status, 200);
     assert.ok([201, 409].includes(results[0].status));
     h = await current();
     assert.equal(h.reviewState, 'IN_REVIEW');

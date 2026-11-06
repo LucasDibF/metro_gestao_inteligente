@@ -4,6 +4,8 @@ import { inpeFixture } from '../helpers/inpe-fixture';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import sharp from 'sharp';
+import type { ReportSnapshot } from '@spt/report-templates';
 import { NestFactory } from '@nestjs/core';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -28,13 +30,27 @@ test('report snapshots and PDFs are immutable, private and idempotent; worker le
     userIds: string[] = [],
     keys: string[] = [];
   try {
+    const logoDataUrl =
+      'data:image/png;base64,' +
+      (
+        await sharp({ create: { width: 20, height: 10, channels: 3, background: '#176045' } })
+          .png()
+          .toBuffer()
+      ).toString('base64');
     const password = crypto.randomUUID(),
       passwordHash = await hashPassword(password),
       users = [];
     for (const [i, role] of (['ENGINEER', 'ADMIN', 'VIEWER', 'ENGINEER'] as const).entries()) {
       const tenantId =
         i === 0 || i === 3
-          ? (await db.tenant.create({ data: { name: 'Empresa sintética para relatório' } })).id
+          ? (
+              await db.tenant.create({
+                data: {
+                  name: 'Empresa sintética para relatório',
+                  ...(i === 0 ? { profile: { logoDataUrl } } : {}),
+                },
+              })
+            ).id
           : tenantIds[0];
       if (i === 0 || i === 3) tenantIds.push(tenantId);
       const user = await db.user.create({
@@ -114,6 +130,12 @@ test('report snapshots and PDFs are immutable, private and idempotent; worker le
       ],
     };
     assert.equal((await call(holePath + '/ensaios', spt)).status, 201);
+    let lastMetre = { id: '', version: 0 };
+    for (const depthM of ['2', '3', '4', '5']) {
+      const created = await call(holePath + '/ensaios', { ...spt, depthM });
+      assert.equal(created.status, 201);
+      lastMetre = (await created.json()) as { id: string; version: number };
+    }
     const coordResponse = await call(
       holePath + '/arquivos/coordenadas/executada',
       {
@@ -214,6 +236,18 @@ test('report snapshots and PDFs are immutable, private and idempotent; worker le
     ]);
     assert.deepEqual(processed.sort(), [false, true]);
     let issue = await db.reportIssue.findUniqueOrThrow({ where: { id: two.id } });
+    assert.equal((issue.snapshot as unknown as ReportSnapshot).tenant.logoDataUrl, logoDataUrl);
+    await db.tenant.update({
+      where: { id: tenantIds[0] },
+      data: { profile: { logoDataUrl: null } },
+    });
+    assert.equal(
+      (
+        (await db.reportIssue.findUniqueOrThrow({ where: { id: two.id } }))
+          .snapshot as unknown as ReportSnapshot
+      ).tenant.logoDataUrl,
+      logoDataUrl,
+    );
     assert.equal(issue.state, 'READY');
     keys.push(issue.objectKey!);
     assert.equal(
@@ -239,7 +273,17 @@ test('report snapshots and PDFs are immutable, private and idempotent; worker le
     assert.ok(bytes.subarray(0, 5).equals(Buffer.from('%PDF-')));
     assert.equal(createHash('sha256').update(bytes).digest('hex'), issue.pdfSha256);
     await writeFile(captures + '/report-synthetic.pdf', bytes);
-    assert.equal((await call(holePath + '/ensaios', { ...spt, depthM: '2' })).status, 201);
+    assert.equal(
+      (
+        await call(
+          holePath + '/ensaios/' + lastMetre.id,
+          { ...spt, depthM: '5', version: lastMetre.version },
+          0,
+          'PUT',
+        )
+      ).status,
+      200,
+    );
     assert.equal(
       (await db.report.findUniqueOrThrow({ where: { id: report.id } })).currentIssueId,
       null,

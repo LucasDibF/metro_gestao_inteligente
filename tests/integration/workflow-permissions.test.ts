@@ -69,6 +69,14 @@ test('responsibilities separate administration, commerce and engineering; operat
     });
     assert.equal(batchResponse.status, 201);
     const batch = await batchResponse.json();
+    await db.workAssignment.create({
+      data: {
+        workId: batch.id,
+        tenantId: tenant.id,
+        operatorId: users[2].id,
+        assignedBy: users[3].id,
+      },
+    });
     const folder = await db.folder.findFirstOrThrow({
       where: { workId: batch.id, tenantId: tenant.id },
     });
@@ -92,6 +100,99 @@ test('responsibilities separate administration, commerce and engineering; operat
       ).status,
       403,
     );
+    // A terminal 30/12 on row 5 ends at 4.12 m, not at its nominal row label.
+    const partialPath = `/obras/${batch.id}/furos/${initial[0].id}`;
+    let terminal;
+    for (let metre = 1; metre <= 5; metre++) {
+      const state = await db.borehole.findUniqueOrThrow({ where: { id: initial[0].id } });
+      const response = await call(2, partialPath + '/ensaios', {
+        depthM: String(metre),
+        technicalVersion: state.technicalVersion,
+        ...(metre === 1 ? { recordType: 'INITIAL_SOIL' } : {}),
+        advances:
+          metre === 1
+            ? []
+            : metre === 5
+              ? [{ blows: 30, penetrationMm: 120 }]
+              : [4, 6, 8].map((blows) => ({ blows, penetrationMm: 150 })),
+        ...(metre === 5 ? { interruptionReason: 'Encerramento de teste' } : {}),
+        soil: { soilType: 'Argila arenosa', description: 'Texto do solo preservado' },
+      });
+      assert.equal(response.status, 201);
+      if (metre === 5) terminal = await response.json();
+    }
+    let partialState = await db.borehole.findUniqueOrThrow({ where: { id: initial[0].id } });
+    const tooShort = await call(
+      2,
+      partialPath + '/tecnico',
+      {
+        technicalVersion: partialState.technicalVersion,
+        executedDepthM: '4.11',
+        fieldDate: '2026-11-03',
+      },
+      'PUT',
+    );
+    assert.equal(tooShort.status, 400);
+    assert.equal((await tooShort.json()).code, 'EXECUTED_DEPTH_EXCLUDES_DATA');
+    const closed = await call(
+      2,
+      partialPath + '/tecnico',
+      {
+        technicalVersion: partialState.technicalVersion,
+        executedDepthM: '4.12',
+        waterLevelM: '1.5',
+        fieldDate: '2026-11-03',
+      },
+      'PUT',
+    );
+    assert.equal(closed.status, 200);
+    const finalSoil = await db.soilLayer.findFirstOrThrow({
+      where: { boreholeId: initial[0].id },
+      orderBy: { toM: 'desc' },
+    });
+    assert.equal(String(finalSoil.toM), '4.12');
+    assert.equal(finalSoil.description, 'Texto do solo preservado');
+    partialState = await db.borehole.findUniqueOrThrow({ where: { id: initial[0].id } });
+    const editedPartial = await call(
+      2,
+      partialPath + '/ensaios/' + terminal.id,
+      {
+        depthM: '5',
+        version: terminal.version,
+        technicalVersion: partialState.technicalVersion,
+        advances: [{ blows: 30, penetrationMm: 120 }],
+        interruptionReason: 'Encerramento de teste',
+        soil: { soilType: 'Argila arenosa', description: 'Texto do solo preservado' },
+      },
+      'PUT',
+    );
+    assert.equal(editedPartial.status, 200);
+    partialState = await db.borehole.findUniqueOrThrow({ where: { id: initial[0].id } });
+    assert.equal(
+      (
+        await call(2, partialPath + '/tecnico/enviar-revisao', {
+          technicalVersion: partialState.technicalVersion,
+          note: 'Conferência do encerramento parcial',
+        })
+      ).status,
+      201,
+    );
+    assert.equal(
+      (
+        await call(1, partialPath + '/tecnico/aprovar', {
+          technicalVersion: partialState.technicalVersion,
+          note: 'Conferido',
+          reviewerName: 'Teste',
+          reviewerRegistration: 'SEM VALIDADE',
+        })
+      ).status,
+      201,
+    );
+    assert.deepEqual(
+      (await db.sptTest.findUniqueOrThrow({ where: { id: terminal.id } })).advances,
+      [{ blows: 30, penetrationMm: 120 }],
+    );
+
     const rootResponse = await call(3, works, { name: 'No folder', initialBoreholeCount: 2 });
     assert.equal(rootResponse.status, 201);
     const root = await rootResponse.json();
@@ -103,6 +204,14 @@ test('responsibilities separate administration, commerce and engineering; operat
     const workResponse = await call(3, works, { name: 'Commercial work' });
     assert.equal(workResponse.status, 201);
     const work = await workResponse.json();
+    await db.workAssignment.create({
+      data: {
+        workId: work.id,
+        tenantId: tenant.id,
+        operatorId: users[2].id,
+        assignedBy: users[3].id,
+      },
+    });
     const clientResponse = await call(3, '/clientes', {
       name: 'Cliente de teste',
       email: 'cliente@example.invalid',
@@ -127,7 +236,34 @@ test('responsibilities separate administration, commerce and engineering; operat
         .status,
       409,
     );
-    const holeResponse = await call(1, `/obras/${work.id}/furos`, { code: 'SP-01' });
+    const fieldFolder = await db.folder.create({
+      data: { tenantId: tenant.id, workId: work.id, name: 'Field folder' },
+    });
+    const foreignWork = await db.work.create({
+      data: { tenantId: foreign.id, name: 'Foreign work' },
+    });
+    const foreignFolder = await db.folder.create({
+      data: { tenantId: foreign.id, workId: foreignWork.id, name: 'Foreign folder' },
+    });
+    await assert.rejects(
+      scoped.run({ userId: users[2].id, tenantId: tenant.id }, (tx) =>
+        tx.folder.update({ where: { id: fieldFolder.id }, data: { name: 'Forbidden rename' } }),
+      ),
+    );
+    assert.equal(
+      (await db.folder.findUniqueOrThrow({ where: { id: fieldFolder.id } })).name,
+      'Field folder',
+    );
+    assert.equal(
+      await scoped.run({ userId: users[2].id, tenantId: tenant.id }, (tx) =>
+        tx.folder.count({ where: { id: foreignFolder.id } }),
+      ),
+      0,
+    );
+    const holeResponse = await call(1, `/obras/${work.id}/furos`, {
+      code: 'SP-01',
+      folderId: fieldFolder.id,
+    });
     assert.equal(holeResponse.status, 201);
     const hole = await holeResponse.json();
     const path = `/obras/${work.id}/furos/${hole.id}`;
@@ -184,6 +320,7 @@ test('responsibilities separate administration, commerce and engineering; operat
     const extraHole = await call(1, `/obras/${work.id}/furos`, { code: 'SP-02' });
     assert.equal(extraHole.status, 201);
     const extraId = (await extraHole.json()).id;
+    // A combined administrator sees the work, but field execution needs an active assignment.
     assert.equal(
       (
         await call(0, `/obras/${work.id}/furos/${extraId}/ensaios`, {
@@ -191,7 +328,7 @@ test('responsibilities separate administration, commerce and engineering; operat
           advances: [1, 2, 3].map((blows) => ({ blows, penetrationMm: 150 })),
         })
       ).status,
-      201,
+      403,
     );
     const metre = {
       depthM: '1',
@@ -218,6 +355,33 @@ test('responsibilities separate administration, commerce and engineering; operat
       ).status,
       200,
     );
+    for (const [invalid, expectedCode] of [
+      [{ executedDepthM: '0' }, 'EXECUTED_DEPTH_INVALID'],
+      [{ executedDepthM: '0.5' }, 'EXECUTED_DEPTH_EXCLUDES_DATA'],
+      [{ executedDepthM: '1', waterLevelM: '2' }, 'WATER_LEVEL_BELOW_DEPTH'],
+      [{ fieldDate: '2026-02-30' }, 'FIELD_DATE_INVALID'],
+    ] as const) {
+      const state = await db.borehole.findUniqueOrThrow({ where: { id: hole.id } });
+      const response = await call(
+        2,
+        path + '/tecnico',
+        Object.assign(
+          {
+            technicalVersion: state.technicalVersion,
+            executedDepthM: '1',
+            fieldDate: '2026-11-01',
+          },
+          invalid,
+        ),
+        'PUT',
+      );
+      assert.equal(response.status, 400);
+      assert.equal((await response.json()).code, expectedCode);
+      assert.equal(
+        (await db.borehole.findUniqueOrThrow({ where: { id: hole.id } })).technicalVersion,
+        state.technicalVersion,
+      );
+    }
     current = await db.borehole.findUniqueOrThrow({ where: { id: hole.id } });
     assert.equal(
       (
@@ -409,6 +573,7 @@ test('responsibilities separate administration, commerce and engineering; operat
     await db.sptTest.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.borehole.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.folder.deleteMany({ where: { tenantId: { in: tenantIds } } });
+    await db.workAssignment.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.work.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.client.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await db.authSession.deleteMany({ where: { userId: { in: ids } } });

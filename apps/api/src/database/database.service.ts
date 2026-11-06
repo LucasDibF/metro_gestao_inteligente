@@ -1,13 +1,20 @@
 import { Injectable, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { poolSettings } from './pool-settings';
 
 @Injectable()
 export class DatabaseService extends PrismaClient implements OnApplicationShutdown, OnModuleInit {
   constructor() {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) throw new Error('DATABASE_URL is required');
-    super({ adapter: new PrismaPg({ connectionString, connectionTimeoutMillis: 5000 }) });
+    super({
+      adapter: new PrismaPg({
+        connectionString,
+        connectionTimeoutMillis: 5000,
+        max: poolSettings().max,
+      }),
+    });
   }
 
   async onModuleInit() {

@@ -5,7 +5,18 @@ import { randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { hashPassword } from '../apps/api/src/auth/password';
 
-async function main() {
+// Exclusive to local development: the migrations drop this function, so `npm run dev:setup`
+// must run again after applying them. It is the only path that creates it.
+async function provisionLocalRoleFunction(db: PrismaClient): Promise<void> {
+  await db.$executeRaw`CREATE OR REPLACE FUNCTION set_local_test_role(test_user UUID,test_tenant UUID,test_role TEXT) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$ BEGIN
+      IF test_user::text IS DISTINCT FROM current_setting('app.user_id',true) OR test_tenant::text IS DISTINCT FROM current_setting('app.tenant_id',true) OR test_role NOT IN ('ADMIN','ENGINEER','OPERATOR','COMMERCIAL','VIEWER') OR NOT EXISTS(SELECT 1 FROM public.users u JOIN public.memberships m ON m.user_id=u.id WHERE u.id=test_user AND u.email='dev-bypass@example.invalid' AND u.active AND m.tenant_id=test_tenant AND m.active) THEN RAISE EXCEPTION 'Development role unavailable'; END IF;
+      UPDATE public.memberships SET additional_roles='{}',role=test_role::public."MembershipRole" WHERE user_id=test_user AND tenant_id=test_tenant;
+    END $$`;
+  await db.$executeRaw`REVOKE ALL ON FUNCTION set_local_test_role(UUID,UUID,TEXT) FROM PUBLIC`;
+  await db.$executeRaw`DO $$ BEGIN IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='spt_runtime') THEN GRANT EXECUTE ON FUNCTION set_local_test_role(UUID,UUID,TEXT) TO spt_runtime; END IF; END $$`;
+}
+
+async function main(): Promise<void> {
   const connectionString = process.env.MIGRATION_DATABASE_URL;
   if (!connectionString || !['localhost', '127.0.0.1'].includes(new URL(connectionString).hostname))
     throw new Error('Local database required');
@@ -40,12 +51,7 @@ async function main() {
       }
       return { userId: user.id, tenantId: membership.tenantId };
     });
-    await db.$executeRaw`CREATE OR REPLACE FUNCTION set_local_test_role(test_user UUID,test_tenant UUID,test_role TEXT) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$ BEGIN
-      IF test_user::text IS DISTINCT FROM current_setting('app.user_id',true) OR test_tenant::text IS DISTINCT FROM current_setting('app.tenant_id',true) OR test_role NOT IN ('ADMIN','ENGINEER','OPERATOR','COMMERCIAL','VIEWER') OR NOT EXISTS(SELECT 1 FROM public.users u JOIN public.memberships m ON m.user_id=u.id WHERE u.id=test_user AND u.email='dev-bypass@example.invalid' AND u.active AND m.tenant_id=test_tenant AND m.active) THEN RAISE EXCEPTION 'Development role unavailable'; END IF;
-      UPDATE public.memberships SET additional_roles='{}',role=test_role::public."MembershipRole" WHERE user_id=test_user AND tenant_id=test_tenant;
-    END $$`;
-    await db.$executeRaw`REVOKE ALL ON FUNCTION set_local_test_role(UUID,UUID,TEXT) FROM PUBLIC`;
-    await db.$executeRaw`GRANT EXECUTE ON FUNCTION set_local_test_role(UUID,UUID,TEXT) TO spt_runtime`;
+    await provisionLocalRoleFunction(db);
     let env = await readFile('.env', 'utf8');
     for (const [key, value] of Object.entries({
       NODE_ENV: 'development',

@@ -1,0 +1,211 @@
+/* Folder explorer: scoped reference tree with native accessible toggles. */
+.hierarchy-browser {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  align-items: start;
+  gap: 28px;
+  margin-top: 28px;
+}
+.hierarchy-browser > section {
+  min-width: 0;
+}
+.folder-tree {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+  background: var(--surface);
+  max-height: 640px;
+  overflow-y: auto;
+}
+.folder-tree ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.folder-tree .tree-children > ul {
+  margin-left: 11px;
+  padding-left: 11px;
+  border-left: 1px solid var(--line);
+}
+.folder-tree .tree-item {
+  position: relative;
+  margin-top: 4px;
+}
+.folder-tree .tree-item::before {
+  content: '';
+  position: absolute;
+  left: -11px;
+  top: 14px;
+  width: 11px;
+  height: 1px;
+  background: var(--line);
+}
+.folder-tree .tree-label,
+.folder-tree .file-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 4px;
+  min-height: 28px;
+  height: auto;
+  cursor: pointer;
+  font:
+    400 14px/1.4 'IBM Plex Sans',
+    sans-serif;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+.folder-tree button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.folder-tree svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  flex-shrink: 0;
+  stroke-width: 1.75;
+}
+.folder-tree .tree-label:hover,
+.folder-tree .file-item:hover,
+.folder-tree .tree-action:hover {
+  background: var(--subtle);
+}
+.folder-tree .is-selected {
+  background: var(--subtle);
+  font-weight: 500;
+}
+.folder-tree .tree-label[aria-expanded='true'] > svg:not(.tree-chevron) {
+  color: var(--ink);
+}
+.folder-tree .tree-chevron {
+  width: 12px;
+  height: 12px;
+}
+.folder-tree .tree-label[aria-expanded='true'] .tree-chevron {
+  transform: rotate(90deg);
+}
+.folder-tree .tree-work {
+  font-weight: 500;
+}
+.tree-folder-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.tree-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.folder-tree .tree-action,
+.folder-tree .tree-node-actions .trash-action > button {
+  width: 28px;
+  min-height: 28px;
+  height: 28px;
+  padding: 6px;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+}
+.folder-tree .tree-node-actions .trash-action > button {
+  font-size: 0;
+  gap: 0;
+}
+.tree-folder-row:has(.trash-confirm) {
+  flex-wrap: wrap;
+}
+.tree-node-actions:has(.trash-confirm) {
+  flex-basis: 100%;
+  width: 100%;
+}
+.folder-tree .trash-confirm {
+  width: 100%;
+  max-width: 100%;
+  padding: 12px;
+}
+.folder-tree .trash-confirm button {
+  margin: 6px 0;
+  width: 100%;
+}
+.tree-children-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+}
+.tree-children-wrapper.is-open {
+  grid-template-rows: 1fr;
+}
+.tree-children {
+  overflow: hidden;
+  min-height: 0;
+}
+.folder-tree .tree-state {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 6px 8px;
+  overflow-wrap: anywhere;
+}
+.folder-tree .tree-state p {
+  margin: 0;
+  color: inherit;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tree-children-wrapper {
+    transition: grid-template-rows 0.3s ease-in-out;
+  }
+  .folder-tree .tree-chevron {
+    transition: transform 0.2s ease;
+  }
+  .folder-tree button {
+    transition: background-color 0.2s ease;
+  }
+}
+@media (max-width: 1100px) {
+  .hierarchy-browser {
+    grid-template-columns: 1fr;
+  }
+  .folder-pane {
+    max-width: 480px;
+  }
+}
+@media (max-width: 760px) {
+  .folder-pane {
+    max-width: none;
+  }
+  .folder-tree {
+    padding: 16px;
+    max-height: 440px;
+  }
+  .folder-tree .tree-label,
+  .folder-tree .file-item,
+  .folder-tree .tree-action,
+  .folder-tree .tree-node-actions .trash-action > button {
+    min-height: 44px;
+  }
+  .folder-tree .tree-item::before {
+    top: 22px;
+  }
+  .folder-tree .tree-node-actions .trash-action > button {
+    height: 44px;
+  }
+}
+
+@media (max-width: 760px) {
+  .folder-tree .tree-action,
+  .folder-tree .tree-node-actions .trash-action > button {
+    width: 44px;
+  }
+}
+.folder-tree .tree-node-actions .trash-action > button:hover {
+  background: var(--subtle);
+}

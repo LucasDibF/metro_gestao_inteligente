@@ -2,11 +2,13 @@ import { requestLog, SafeExceptionFilter } from './operations/http-observability
 import { developmentBypassEnabled } from './auth/development-access';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { configureHttp } from './operations/http-setup';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.getHttpAdapter().getInstance().disable('x-powered-by');
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  configureHttp(app);
   app.use(requestLog);
   app.useGlobalFilters(new SafeExceptionFilter());
   app.setGlobalPrefix('api/v1');

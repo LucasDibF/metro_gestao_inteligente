@@ -1,3 +1,7 @@
+import { MobileSyncController } from './mobile/mobile-sync.controller';
+import { MobileController } from './mobile/mobile.controller';
+import { FieldAssignmentController } from './works/field-assignment.controller';
+import { FieldAssignmentService } from './works/field-assignment.service';
 import { AccessController } from './management/access.controller';
 import { ClientsController } from './management/clients.controller';
 import { InteractiveSheetService } from './technical/interactive-sheet.service';
@@ -38,6 +42,9 @@ import { AuthGuard } from './auth/auth.guard';
 @Module({
   imports: [ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }])],
   controllers: [
+    MobileController,
+    MobileSyncController,
+    FieldAssignmentController,
     AccessController,
     ClientsController,
     WorkspaceController,
@@ -56,6 +63,7 @@ import { AuthGuard } from './auth/auth.guard';
     TrashController,
   ],
   providers: [
+    FieldAssignmentService,
     WorkspaceService,
     { provide: PrismaClient, useClass: DatabaseService },
     ReportsService,

@@ -75,7 +75,7 @@ async function main() {
         soilType: 'Argila arenosa',
         description: 'Camada fictícia, avermelhada. Não representa um ensaio ou local real.',
       });
-      for (let depth = 1; depth <= 3; depth++)
+      for (let depth = 1; depth <= 5; depth++)
         await call(path + '/ensaios', {
           depthM: String(depth),
           advances: [

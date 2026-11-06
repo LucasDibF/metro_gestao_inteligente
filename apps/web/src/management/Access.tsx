@@ -16,10 +16,12 @@ interface Member {
 export function Access({
   profile,
   onError,
+  onEditingChange,
   onProfileChanged,
 }: {
   profile: Profile;
   onError: (e: unknown) => void;
+  onEditingChange?: (editing: boolean) => void;
   onProfileChanged: () => void;
 }) {
   const [items, setItems] = useState<Member[] | null>(null),
@@ -28,6 +30,10 @@ export function Access({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [message, setMessage] = useState('');
+  useEffect(() => {
+    onEditingChange?.(Boolean(editing));
+    return () => onEditingChange?.(false);
+  }, [editing, onEditingChange]);
   useEffect(() => {
     let active = true;
     auth

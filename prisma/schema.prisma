@@ -1,10 +1,12 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 datasource db {
   provider = "postgresql"
 }
 model Tenant {
+  profile Json?
   notificationReads NotificationRead[]
   id String @id @default(uuid()) @db.Uuid
   name String @db.VarChar(200)
@@ -13,6 +15,7 @@ model Tenant {
   works Work[]
   sessions AuthSession[]
   memberships Membership[]
+  mobileOperations MobileOperation[]
   @@map("tenants")
 }
 
@@ -25,6 +28,7 @@ enum MembershipRole {
 }
 
 model User {
+  assignedWorkAssignments WorkAssignment[] @relation("WorkAssignedBy")
   notificationReads NotificationRead[]
   id String @id @default(uuid()) @db.Uuid
   email String @unique @db.VarChar(254)
@@ -34,10 +38,12 @@ model User {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   sessions AuthSession[]
   memberships Membership[]
+  mobileOperations MobileOperation[]
   @@map("users")
 }
 
 model Membership {
+  fieldAssignments WorkAssignment[]
   tenantId String @map("tenant_id") @db.Uuid
   userId String @map("user_id") @db.Uuid
   role MembershipRole
@@ -65,6 +71,7 @@ model AuthSession {
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   @@index([familyId])
+  @@index([familyId], map: "auth_sessions_active_family_idx", where: raw("revoked_at IS NULL AND rotated_at IS NULL"))
   @@index([userId])
   @@map("auth_sessions")
 }
@@ -81,6 +88,7 @@ model MfaCredential {
 }
 
 model Work {
+  fieldAssignment WorkAssignment?
   id String @id @default(uuid()) @db.Uuid
   tenantId String @map("tenant_id") @db.Uuid
   name String @db.VarChar(200)
@@ -153,6 +161,7 @@ model Borehole {
  officialCoordinateId String? @map("official_coordinate_id") @db.Uuid
  coordinates BoreholeCoordinate[] @relation("HoleCoordinates")
  photos BoreholePhoto[]
+ mobileOperations MobileOperation[]
  officialCoordinate BoreholeCoordinate? @relation("OfficialCoordinate",fields:[officialCoordinateId,id,workId,tenantId],references:[id,boreholeId,workId,tenantId],onDelete:Restrict)
  @@unique([id, workId, tenantId])
  @@map("boreholes")
@@ -264,6 +273,10 @@ model BoreholePhoto {
  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
  borehole Borehole @relation(fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:Restrict)
+ // Índices parciais de 202611050001_flow_and_access_corrections. O predicado da fila está na forma normalizada pelo PostgreSQL
+ // (pg_get_expr): escrito como IN ('PENDING','PROCESSING'), o migrate diff proporia DROP e CREATE do índice.
+ @@index([tenantId,workId,boreholeId,createdAt,id],map:"borehole_photos_active_scope_idx",where:raw("deleted_at IS NULL"))
+ @@index([createdAt,id],map:"borehole_photos_queue_idx",where:raw("((processing_state)::text = ANY ((ARRAY['PENDING'::character varying, 'PROCESSING'::character varying])::text[]))"))
  @@map("borehole_photos")
 }
 
@@ -281,6 +294,7 @@ model Report {
  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
  issues ReportIssue[]
  @@unique([id,workId,tenantId])
+ @@index([tenantId,workId,createdAt(sort:Desc),id(sort:Desc)],map:"reports_tenant_work_created_idx")
  @@map("reports")
 }
 model ReportIssue {
@@ -339,4 +353,50 @@ model Client {
  @@unique([id,tenantId])
  @@index([tenantId,name,id])
  @@map("clients")
+}
+
+model WorkAssignment {
+ workId String @id @map("work_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ operatorId String @map("operator_id") @db.Uuid
+ assignedBy String @map("assigned_by") @db.Uuid
+ assignedByUser User @relation("WorkAssignedBy",fields:[assignedBy],references:[id],onDelete:Restrict)
+ active Boolean @default(true)
+ version Int @default(1)
+ updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
+ work Work @relation(fields:[workId,tenantId],references:[id,tenantId],onDelete:Restrict)
+ operator Membership @relation(fields:[tenantId,operatorId],references:[tenantId,userId],onDelete:Restrict)
+ @@unique([workId,tenantId])
+ @@index([tenantId,operatorId,active],map:"work_assignments_operator_idx")
+ @@map("work_assignments")
+}
+
+// Criada em 202611020002_management e escrita só por funções SECURITY DEFINER (admin_member_*). RLS e políticas ficam na migração.
+model MembershipEvent {
+ id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ actorId String @map("actor_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ action String
+ details Json
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+ @@map("membership_events")
+}
+
+// Criada em 202611040002_mobile_sync. Recibos imutáveis: não remover enquanto aparelhos puderem repetir operações (apps/mobile/README.md).
+// A API usa só SQL bruto nesta tabela. RLS e políticas ficam na migração.
+model MobileOperation {
+ tenantId String @map("tenant_id") @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ operationId String @map("operation_id") @db.Uuid
+ workId String @map("work_id") @db.Uuid
+ boreholeId String @map("borehole_id") @db.Uuid
+ requestHash String @map("request_hash")
+ response Json
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+ tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ user User @relation(fields:[userId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+ borehole Borehole @relation(fields:[boreholeId,workId,tenantId],references:[id,workId,tenantId],onDelete:NoAction,onUpdate:NoAction)
+ @@id([tenantId,userId,operationId])
+ @@map("mobile_operations")
 }

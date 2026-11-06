@@ -92,7 +92,6 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
     await page.getByLabel('Cor do solo', { exact: true }).fill('Marrom');
     await page.getByLabel('Umidade do solo', { exact: true }).selectOption('Úmida');
     await page.getByLabel('Método de execução deste metro', { exact: true }).selectOption('SP_TH');
-    await page.getByLabel('Recuperação da amostra', { exact: true }).selectOption('PARCIAL');
     await page.getByLabel('Tipo de solo', { exact: true }).fill('Areia siltosa');
     await page
       .getByLabel('Descrição do solo (opcional)', { exact: true })
@@ -172,7 +171,6 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
     await expect(page.getByLabel('Método de execução deste metro', { exact: true })).toHaveValue(
       'SP_TH',
     );
-    await expect(page.getByLabel('Recuperação da amostra', { exact: true })).toHaveValue('PARCIAL');
     await page.getByLabel('Golpes do 3º avanço', { exact: true }).fill('10');
     await page.getByRole('button', { name: 'Salvar metro', exact: true }).click();
     await expect(result).toContainText('N-SPT: 16');
@@ -188,7 +186,7 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
       { blows: 10, penetrationMm: 100 },
     ]);
     expect(saved.version).toBe(4);
-    expect(saved.fieldDetails).toEqual({ executionMethod: 'SP_TH', sampleRecovery: 'PARCIAL' });
+    expect(saved.fieldDetails).toEqual({ executionMethod: 'SP_TH' });
     expect((await db.soilLayer.findFirstOrThrow({ where: { boreholeId: holeId } })).soilColor).toBe(
       'Marrom',
     );
@@ -197,6 +195,20 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
     expect(
       (await db.soilLayer.findFirstOrThrow({ where: { boreholeId: holeId } })).description,
     ).toBe('Marrom, com fragmentos finos.');
+    for (const depthM of ['2', '3', '4', '5'])
+      await db.sptTest.create({
+        data: {
+          tenantId,
+          workId,
+          boreholeId: holeId,
+          depthM,
+          advances: [4, 6, 8].map((blows) => ({ blows, penetrationMm: 150 })),
+          result: { status: 'CONVENTIONAL', nSpt: 14, reason: null },
+          engineVersion: '0.1.0',
+          createdBy: users[0].id,
+          updatedBy: users[0].id,
+        },
+      });
     await page.getByRole('button', { name: 'Visão geral', exact: true }).click();
     await page.getByRole('button', { name: 'Análise geotécnica', exact: true }).click();
     const sheetFrame = page;
@@ -212,7 +224,7 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
     await page.getByLabel('Profundidade executada em metros', { exact: true }).fill('5');
     await page.getByLabel('Nível d’água em metros (opcional)', { exact: true }).fill('0');
     await page.getByRole('button', { name: 'Salvar dados de campo', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('Dados salvos.');
+    await expect(page.getByText('Dados salvos.', { exact: true })).toBeVisible();
     await page.getByText('Ajustar camadas de solo', { exact: true }).click();
     await page.getByRole('button', { name: 'Adicionar camada', exact: true }).click();
     await page.getByLabel('De (m)', { exact: true }).fill('1');

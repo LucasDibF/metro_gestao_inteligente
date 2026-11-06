@@ -1,0 +1,524 @@
+/* Native geotechnical analysis: one measured vertical scale, no document facsimile. */
+.analysis-field-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 0 0 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.analysis-field-strip div {
+  flex: 1;
+  min-width: 180px;
+}
+.analysis-field-strip dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+.analysis-field-strip dd {
+  margin: 4px 0 0;
+  font-weight: 600;
+  font-size: 15px;
+}
+.analysis-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.analysis-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  min-height: 44px;
+}
+.analysis-legend button[aria-pressed='false'] {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.analysis-legend button span {
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+}
+.analysis-legend > span {
+  color: var(--muted);
+  max-width: 42ch;
+}
+.analysis-legend-first {
+  color: #2155b5;
+}
+.analysis-legend-final {
+  color: #c62828;
+}
+.analysis-canvas-size {
+  margin-inline: auto;
+  position: relative;
+}
+.analysis-canvas {
+  transform-origin: top left;
+  color: var(--ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+}
+.analysis-track-head,
+.analysis-tracks {
+  display: grid;
+  grid-template-columns: 70px 280px 160px 320px 110px;
+}
+.analysis-track-head {
+  height: 64px;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+  background: var(--subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+.analysis-track-head > span {
+  padding: 12px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.analysis-tracks {
+  position: relative;
+  margin-bottom: 0;
+}
+.analysis-depth-track,
+.analysis-soil-track,
+.analysis-blows-track,
+.analysis-method-track {
+  position: relative;
+  border-right: 1px solid var(--line);
+  min-width: 0;
+}
+.analysis-depth-track > span {
+  position: absolute;
+  right: 14px;
+  transform: translateY(-100%);
+  color: var(--muted);
+  font-size: 12px;
+  padding-bottom: 5px;
+}
+.analysis-soil {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 0 14px 0 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.2s ease;
+}
+.analysis-soil:hover,
+.analysis-soil.is-active {
+  background: var(--subtle);
+}
+.analysis-soil:focus-visible,
+.analysis-reading:focus-visible,
+.analysis-legend button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -3px;
+}
+.analysis-stratum {
+  height: 100%;
+  flex: 0 0 28px;
+  align-self: stretch;
+  color: #9d7946;
+  background: #f7e6c5;
+}
+.analysis-stratum svg circle {
+  fill: currentColor;
+}
+.analysis-stratum svg path {
+  stroke: currentColor;
+  stroke-width: 0.8;
+  fill: none;
+}
+.analysis-soil.clay .analysis-stratum {
+  background: #efd0b5;
+  color: #85512f;
+}
+.analysis-soil.silt .analysis-stratum {
+  background: #e4e1d7;
+  color: #6b6655;
+}
+.analysis-soil-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 5px 0;
+}
+.analysis-soil-copy > strong {
+  font-size: 14px;
+}
+.analysis-soil-copy > span,
+.analysis-soil-copy small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.analysis-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.analysis-reading,
+.analysis-missing-row {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  padding: 8px 12px;
+  font: inherit;
+  color: var(--ink);
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  text-align: left;
+}
+.analysis-reading {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.analysis-reading:hover,
+.analysis-reading.is-active {
+  background: var(--subtle);
+}
+.analysis-reading > span {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.analysis-reading strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.analysis-reading small,
+.analysis-missing-row {
+  font-size: 11px;
+  color: var(--muted);
+}
+.analysis-reading small {
+  margin-top: 5px;
+}
+.analysis-method-track > span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.analysis-graph {
+  overflow: visible;
+}
+.analysis-grid-vertical {
+  stroke: var(--line);
+  stroke-width: 0.7;
+}
+.analysis-grid-horizontal {
+  stroke: var(--line);
+  stroke-width: 0.7;
+  stroke-dasharray: 3 5;
+}
+.analysis-axis-label {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.analysis-curve-first {
+  color: #2155b5;
+}
+.analysis-curve-final {
+  color: #c62828;
+}
+.analysis-draw-curve {
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: analysis-trace 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.analysis-point {
+  fill: currentColor;
+  stroke: var(--surface);
+  stroke-width: 1.5;
+  transition: r 0.2s ease;
+}
+.analysis-point-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.analysis-graph g[role='button'] {
+  cursor: pointer;
+  outline: none;
+}
+.analysis-graph g[role='button']:focus-visible .analysis-point {
+  stroke: var(--ink);
+  stroke-width: 3;
+}
+.analysis-crosshair {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  pointer-events: none;
+}
+.analysis-water,
+.analysis-termination {
+  position: absolute;
+  left: 70px;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed #2155b5;
+  pointer-events: none;
+}
+.analysis-water span,
+.analysis-termination span {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  background: var(--surface);
+  padding: 2px 5px;
+  color: #2155b5;
+}
+.analysis-termination {
+  border-color: var(--muted);
+}
+.analysis-termination span {
+  color: var(--ink);
+  right: auto;
+  left: 30px;
+  bottom: -24px;
+}
+.analysis-track-empty {
+  padding: 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+[data-theme='dark'] .analysis-legend-first,
+[data-theme='dark'] .analysis-curve-first {
+  color: #91b9ff;
+}
+[data-theme='dark'] .analysis-legend-final,
+[data-theme='dark'] .analysis-curve-final {
+  color: #ffabab;
+}
+[data-theme='dark'] .analysis-water {
+  border-color: #91b9ff;
+}
+[data-theme='dark'] .analysis-water span {
+  color: #91b9ff;
+}
+@keyframes analysis-trace {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-draw-curve {
+    animation: none;
+  }
+  .analysis-point,
+  .analysis-reading,
+  .analysis-soil {
+    transition: none;
+  }
+}
+.analysis-depth-track > span {
+  transform: translateY(-50%);
+  padding-bottom: 0;
+}
+.analysis-soil,
+.analysis-reading {
+  border-radius: 0;
+  box-shadow: none;
+}
+.analysis-layer-range {
+  fill: var(--brand);
+  fill-opacity: 0.06;
+  pointer-events: none;
+}
+.analysis-soil {
+  min-height: 0;
+}
+.analysis-surface-reading {
+  height: 44px;
+  min-height: 44px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  text-align: left;
+  background: var(--subtle);
+  color: var(--ink);
+  font: inherit;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.analysis-water {
+  left: 510px;
+}
+.analysis-termination {
+  border: 0;
+}
+.analysis-termination::before,
+.analysis-termination::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  border-top: 1px dashed var(--muted);
+}
+.analysis-termination::before {
+  left: 0;
+  width: 280px;
+}
+.analysis-termination::after {
+  left: 440px;
+  right: 0;
+}
+.furo-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.furo-navigation .ui-button {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .furo-navigation {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .furo-navigation .ui-button {
+    font-size: 13px;
+    justify-content: flex-start;
+    padding: 10px;
+  }
+}
+.management-form {
+  max-width: 720px;
+  margin-block: 24px;
+}
+.management-roles {
+  padding: 16px 0;
+}
+.management-roles > label,
+.management-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 400;
+}
+.management-roles input,
+.management-check input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  accent-color: var(--brand);
+}
+.furo-navigation-lock {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+/* Values and curve markers share the center of the geological metre band. */
+.analysis-reading > span {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  right: 12px;
+  transform: translateY(-50%);
+  line-height: 20px;
+}
+.analysis-reading small {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 3px;
+  margin: 0;
+  line-height: 14px;
+}
+.soil-state {
+  font-size: inherit;
+}
+.analysis-reading small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.soil-state-reference {
+  margin: 0 0 20px;
+  padding: 12px 0;
+  border-block: 1px solid var(--line);
+  font-size: 14px;
+}
+.soil-state-reference summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 32px;
+  display: list-item;
+}
+.soil-state-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 16px;
+}
+.soil-state-tables table {
+  font-size: 14px;
+}
+.soil-state-tables th,
+.soil-state-tables td {
+  padding: 8px;
+  text-align: left;
+}
+.soil-state-tables caption {
+  text-align: left;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+@media (max-width: 760px) {
+  .soil-state-tables {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,83 @@
+/* Keep the borehole workflow visible while reading long records. */
+.furo-navigation {
+  position: sticky;
+  top: 64px;
+  z-index: 8;
+  background: var(--surface);
+  padding: 12px 0;
+}
+.furo-navigation-lock {
+  position: sticky;
+  top: 64px;
+  z-index: 8;
+  background: var(--surface);
+}
+.furo-navigation-lock .furo-navigation {
+  position: static;
+}
+.ui-button.generate-report {
+  background: #236b45;
+  color: #fff;
+  border-color: #236b45;
+  transition:
+    background-color 0.2s,
+    box-shadow 0.2s;
+}
+.ui-button.generate-report:hover:not(:disabled) {
+  background: #195334;
+  border-color: #195334;
+  box-shadow: 0 3px 8px #123c2926;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .generate-report:not(:disabled):hover svg {
+    animation: report-ready 0.45s ease-out both;
+  }
+  .generate-report:disabled .ui-spinner {
+    animation: report-working 1.2s ease-in-out infinite;
+  }
+  @keyframes report-ready {
+    0% {
+      clip-path: inset(0 100% 0 0);
+    }
+    100% {
+      clip-path: inset(0);
+    }
+  }
+  @keyframes report-working {
+    0%,
+    100% {
+      transform: rotate(0);
+      opacity: 0.6;
+    }
+    50% {
+      transform: rotate(180deg);
+      opacity: 1;
+    }
+  }
+}
+
+.spt-editor,
+.technical-screen section {
+  scroll-margin-top: 160px;
+}
+@media (max-width: 600px) {
+  .spt-editor,
+  .technical-screen section {
+    scroll-margin-top: 280px;
+  }
+}
+.notice.review-return-note {
+  margin-block: 16px;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: left;
+  color: var(--warning-foreground);
+  background: var(--warning-50);
+}
+.review-return-note p {
+  max-width: none;
+  margin: 4px 0 0;
+  color: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

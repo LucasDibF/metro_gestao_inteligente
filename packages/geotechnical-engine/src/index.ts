@@ -141,3 +141,5 @@ export type { SoilState, SoilGroup } from './soil-classification';
 export { formatSoilDescription } from './soil-description';
 
 export { sptGraphReading } from './graph-reading';
+
+export { testEndDepth } from './test-end-depth';

@@ -85,7 +85,7 @@ Testes de integração/navegador usam as duas conexões de banco, criam seus pr�
 
 ## Operação local e preparação futura de implantação
 
-Existem `infrastructure/docker/Dockerfile`, configuração Nginx e `compose.production.yaml` para API, worker e web. A API usa papel restrito; o worker usa `spt_worker` e declara limites de 1GiB/1,5CPU no Compose. Bypass é false em produção. As três imagens tiveram build aprovado em uma revisão anterior; o Dockerfile recebeu ajuste de OpenSSL depois, portanto esses resultados não comprovam build da revisão final. A verificação local de restauração passou. Esses resultados não significam implantação executada, TLS/domínio configurado ou recuperação de produção homologada. Use configuração própria de produção com S3 HTTPS e segredos externos; o `.env.example` local não é um ambiente de produção.
+Existem `infrastructure/docker/Dockerfile`, configuração Nginx e `compose.production.yaml` para API, worker e web. A API usa papel restrito; o worker usa `spt_worker` e declara limites de 2GiB/1,5CPU no Compose. Bypass é false em produção. As três imagens tiveram build aprovado em uma revisão anterior; o Dockerfile recebeu ajuste de OpenSSL depois, portanto esses resultados não comprovam build da revisão final. A verificação local de restauração passou. Esses resultados não significam implantação executada, TLS/domínio configurado ou recuperação de produção homologada. Use configuração própria de produção com S3 HTTPS e segredos externos; o `.env.example` local não é um ambiente de produção.
 
 A API gera `X-Request-ID` e logs JSON com método, rota, status, duração e empresa, sem registrar corpo/tokens. O filtro de exceções evita despejar erro interno em resposta pública. ADMIN consulta contagens de jobs e a criação mais antiga pendente em `GET /api/v1/operacao/fila`, restrito à própria empresa. Isso é informação operacional inicial, não monitoramento externo/alertas ou métricas de todas as filas homologados.
 
@@ -115,6 +115,7 @@ O ambiente local está pronto para testes: API em 127.0.0.1:3000, interface em 1
 - [Arquivos privados e coordenadas](docs/E06-arquivos-coordenadas.md)
 - [Relatórios, snapshots, worker e PDFs de homologação](docs/E07-relatorios-emissoes.md)
 - [Operação, implantação e verificação local de restauração](docs/E08-operacao.md)
+- [Correções de revisão e PDF](docs/E18-correcoes-revisao-e-pdf.md) e [de fluxo, segurança e acesso](docs/E19-fluxos-seguranca-gargalos.md)
 - [Contexto do produto](apps/web/PRODUCT.md) e [sistema visual observado](apps/web/DESIGN.md)
 
 Registros incrementais preservam evidências históricas; o checklist MVP-001 e o código atual devem ser consultados para o estado consolidado. Não há remoto Git ou CI remota executada neste levantamento, nem destino de publicação confirmado.
@@ -122,7 +123,6 @@ Registros incrementais preservam evidências históricas; o checklist MVP-001 e 
 ## Agentes existentes
 
 Foram inspecionados o `documentation-agent` do workspace anterior e os agentes de interface Impeccable. Os agentes existentes de revisão e documentação visual foram reutilizados; não foram criados especialistas equivalentes. Configurações de arquitetura/backend/segurança/QA citadas na conversa não foram localizadas no levantamento inicial. Essa lacuna não é apresentada como delegação já executada nem como motivo para bloquear implementação independente.
-
 
 ### Consulta opcional no Google Maps
 
@@ -141,7 +141,6 @@ O PDF preserva furos, coordenadas, norte e escala; pode incluir o fundo INPE des
 
 [Configuração do mapa incorporado](https://developers.google.com/maps/documentation/embed/embedding-map).
 
-
 ### Imagem gratuita INPE no croqui
 
 `INPE_MAP_ENABLED=true` no `.env` habilita a busca automática de imagem na prévia e nas novas emissões. Não exige cadastro, assinatura ou chave INPE. Reinicie API e worker após mudar o ambiente. Para desabilitar o fundo e manter apenas vetores, use `false`. O ambiente de testes usa `false`, com respostas sintéticas nos testes específicos, sem consumir o serviço público.
@@ -158,7 +157,6 @@ A imagem e os créditos são incorporados ao PDF, que não faz requisições ext
 
 [Catálogo e licença da coleção](https://data.inpe.br/bdc/stac/v1/collections/CB4A-WPM-PCA-FUSED-1) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-
 ## Diretório local e nome do projeto
 
 Nome do repositório/projeto: `metro-gestao-inteligente` (minúsculas e hífens).
@@ -167,3 +165,11 @@ Diretório local: `Documents/_Projetos/metro-gestao-inteligente`.
 Os comandos npm devem ser executados na raiz desse diretório. Os pacotes internos `@spt/*` mantêm a nomenclatura técnica SPT. O Compose local fixa `name: spt-saas` apenas para continuar utilizando os contêineres e volumes já existentes, sem criar um banco vazio ao mudar a pasta. Banco, usuários, segredos e arquivos de ambiente não foram renomeados.
 
 A mudança de diretório não publica, envia ou sincroniza arquivos com o GitHub.
+
+## Testes de carga da API
+
+O agente especializado `api_load_tester` é configurado localmente em `.codex/agents/api_load_tester.toml`, fora do git. O [plano e as instruções de uso](docs/teste-de-carga-api.md) cobrem concorrência, limites de requisições, banco isolado, filas, fotos e PDFs. A criação do agente não executa carga nem estabelece capacidade de produção.
+
+## Aplicativo de campo em Flutter
+
+A base Android/iPhone fica em [apps/mobile](apps/mobile/README.md). O aplicativo é exclusivo do sondador e utiliza a API existente. O estado da implementação, as regras de atribuição e as etapas para execução offline e fotografias estão em [Mobile Flutter MVP](docs/mobile-flutter-mvp.md).

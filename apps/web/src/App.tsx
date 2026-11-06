@@ -1,36 +1,53 @@
 import { Button } from './ui/Button';
-import { hasRole } from './auth/permissions';
-import { Access } from './management/Access';
-import { Clients } from './management/Clients';
-import { ReportCenter } from './workspace/ReportCenter';
-import { WorkDestination, type WorkTarget } from './workspace/WorkDestination';
+import { hasRole, roleNames } from './auth/permissions';
+import type { WorkTarget } from './workspace/WorkDestination';
 import type { WorkspaceTab } from './ui/AppShell';
 import { AppShell } from './ui/AppShell';
-import { Trash } from './works/Trash';
-import { Works } from './works/Works';
-import { useEffect, useState } from 'react';
-import { auth, ApiError, type Profile } from './auth/client';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { LoadingState } from './ui/LoadingState';
+import { auth, ApiError, isCredentialFailure, type Profile } from './auth/client';
 import { Login } from './auth/Login';
-import { Security } from './auth/Security';
 
-const roles = {
-  ADMIN: 'Administrador',
-  ENGINEER: 'Engenheiro',
-  OPERATOR: 'Sondador',
-  COMMERCIAL: 'Comercial',
-  VIEWER: 'Consulta',
-};
+const Access = lazy(() =>
+  import('./management/Access').then((module) => ({ default: module.Access })),
+);
+const Clients = lazy(() =>
+  import('./management/Clients').then((module) => ({ default: module.Clients })),
+);
+const ReportCenter = lazy(() =>
+  import('./workspace/ReportCenter').then((module) => ({ default: module.ReportCenter })),
+);
+const WorkDestination = lazy(() =>
+  import('./workspace/WorkDestination').then((module) => ({ default: module.WorkDestination })),
+);
+const Trash = lazy(() => import('./works/Trash').then((module) => ({ default: module.Trash })));
+const Works = lazy(() => import('./works/Works').then((module) => ({ default: module.Works })));
+const Security = lazy(() =>
+  import('./auth/Security').then((module) => ({ default: module.Security })),
+);
+
 export function App() {
   const [tab, setTab] = useState<WorkspaceTab>('works');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [target, setTarget] = useState<WorkTarget | null>(null);
   const [message, setMessage] = useState('');
   const [recovery, setRecovery] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [homeVisit, setHomeVisit] = useState(0);
   const [busy, setBusy] = useState(false);
   const [starting, setStarting] = useState(true);
   const [development, setDevelopment] = useState(false);
   const [developmentAvailable, setDevelopmentAvailable] = useState(false);
   const [startupAttempt, setStartupAttempt] = useState(0);
+  useEffect(() => {
+    if (!editing) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [editing]);
   useEffect(() => {
     let active = true;
     setStarting(true);
@@ -68,7 +85,7 @@ export function App() {
       active = false;
     };
   }, [startupAttempt]);
-  function signedOut(message: string) {
+  const signedOut = useCallback((message: string) => {
     auth.clear();
     setProfile(null);
     setDevelopment(false);
@@ -76,17 +93,18 @@ export function App() {
     setTab('works');
     setTarget(null);
     setMessage(message);
-  }
-  function error(error: unknown) {
-    if (error instanceof ApiError && error.code === 'SESSION_SUPERSEDED') return;
-    if (
-      (error instanceof ApiError &&
-        error.status === 401 &&
-        error.code !== 'MFA_VERIFICATION_FAILED') ||
-      !auth.hasSession
-    )
-      signedOut('Sua sessão terminou. Entre novamente para continuar.');
-  }
+  }, []);
+  const error = useCallback(
+    (error: unknown) => {
+      if (error instanceof ApiError && error.code === 'SESSION_SUPERSEDED') return;
+      if (
+        (error instanceof ApiError && error.status === 401 && !isCredentialFailure(error.code)) ||
+        !auth.hasSession
+      )
+        signedOut('Sua sessão terminou. Entre novamente para continuar.');
+    },
+    [signedOut],
+  );
   async function switchTestRole(role: Profile['role']) {
     setBusy(true);
     setMessage('');
@@ -171,6 +189,12 @@ export function App() {
       onError={error}
       busy={busy}
       recovery={recovery}
+      editing={editing}
+      onHome={() => {
+        setTab('works');
+        setTarget(null);
+        setHomeVisit((value) => value + 1);
+      }}
       onLogout={() => void logout()}
       toolbar={
         development ? (
@@ -180,7 +204,7 @@ export function App() {
             <select
               id="test-role"
               value={profile.role}
-              disabled={busy || recovery}
+              disabled={busy || recovery || editing}
               onChange={(e) => void switchTestRole(e.target.value as Profile['role'])}
             >
               <option value="ADMIN">Administrador</option>
@@ -196,58 +220,65 @@ export function App() {
     >
       <div className="account-title">
         <div>
+          {profile.tenant.profile?.logoDataUrl?.startsWith('data:image/png;base64,') ? (
+            <img className="company-logo" src={profile.tenant.profile.logoDataUrl} alt="" />
+          ) : null}
           <h1>{profile.tenant.name}</h1>
           <p>
             {[profile.role, ...(profile.additionalRoles ?? [])]
-              .map((role) => roles[role])
+              .map((role) => roleNames[role])
               .join(' · ')}{' '}
             · Ambiente de trabalho
           </p>
         </div>
         <span className="status">{recovery ? 'Guarde os códigos' : 'Sessão ativa'}</span>
       </div>
-      {tab === 'works' ? (
-        target ? (
-          <WorkDestination
-            key={target.workId + (target.boreholeId ?? '')}
-            target={target}
+      <Suspense fallback={<LoadingState>Carregando tela…</LoadingState>}>
+        {tab === 'works' ? (
+          target ? (
+            <WorkDestination
+              key={target.workId + (target.boreholeId ?? '')}
+              target={target}
+              profile={profile}
+              onError={error}
+              onBack={() => setTarget(null)}
+              onEditingChange={setEditing}
+            />
+          ) : (
+            <Works key={homeVisit} profile={profile} onError={error} onEditingChange={setEditing} />
+          )
+        ) : tab === 'access' && hasRole(profile, 'ADMIN') ? (
+          <Access
             profile={profile}
             onError={error}
-            onBack={() => setTarget(null)}
+            onEditingChange={setEditing}
+            onProfileChanged={() => {
+              void auth.request<Profile>('/auth/me').then(setProfile).catch(error);
+            }}
           />
+        ) : tab === 'clients' && hasRole(profile, 'ADMIN', 'COMMERCIAL', 'ENGINEER', 'VIEWER') ? (
+          <Clients profile={profile} onError={error} onEditingChange={setEditing} />
+        ) : tab === 'reports' && hasRole(profile, 'ADMIN', 'COMMERCIAL', 'ENGINEER', 'VIEWER') ? (
+          <ReportCenter
+            canDownload={profile.canDownloadReports !== false}
+            onOpen={(next) => {
+              setTarget(next);
+              setTab('works');
+            }}
+            onError={error}
+          />
+        ) : tab === 'trash' && hasRole(profile, 'ADMIN') ? (
+          <Trash onError={error} />
         ) : (
-          <Works profile={profile} onError={error} />
-        )
-      ) : tab === 'access' && hasRole(profile, 'ADMIN') ? (
-        <Access
-          profile={profile}
-          onError={error}
-          onProfileChanged={() => {
-            void auth.request<Profile>('/auth/me').then(setProfile).catch(error);
-          }}
-        />
-      ) : tab === 'clients' && hasRole(profile, 'ADMIN', 'COMMERCIAL', 'ENGINEER', 'VIEWER') ? (
-        <Clients profile={profile} onError={error} />
-      ) : tab === 'reports' && hasRole(profile, 'ADMIN', 'COMMERCIAL', 'ENGINEER', 'VIEWER') ? (
-        <ReportCenter
-          canDownload={profile.canDownloadReports !== false}
-          onOpen={(next) => {
-            setTarget(next);
-            setTab('works');
-          }}
-          onError={error}
-        />
-      ) : tab === 'trash' && hasRole(profile, 'ADMIN') ? (
-        <Trash onError={error} />
-      ) : (
-        <Security
-          key={profile.userId}
-          profile={profile}
-          onSignedOut={signedOut}
-          onError={error}
-          onRecovery={() => setRecovery(true)}
-        />
-      )}
+          <Security
+            key={profile.userId}
+            profile={profile}
+            onSignedOut={signedOut}
+            onError={error}
+            onRecovery={() => setRecovery(true)}
+          />
+        )}
+      </Suspense>
     </AppShell>
   );
 }

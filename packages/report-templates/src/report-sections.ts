@@ -1,4 +1,5 @@
-import type { ReportSnapshot, MapBackground } from './index';
+import { templateSince } from './template-version';
+import type { ReportSnapshot, MapBackground } from './types';
 import { renderTechnicalMap } from './technical-map';
 import { escapeHtml as e } from './html';
 import { numeric, sheetHeader, sheetFooter } from './sheet-layout';
@@ -9,9 +10,14 @@ function chunks<T>(values: T[], count: number): T[][] {
     values.slice(i * count, (i + 1) * count),
   );
 }
-export function photographicSheets(s: ReportSnapshot, photos: Record<string, string>) {
+export function photographicSheets(
+  s: ReportSnapshot,
+  photos: Record<string, string>,
+  boreholeId?: string,
+) {
   const sheets: string[] = [];
   for (const h of s.holes) {
+    if (boreholeId !== undefined && h.id !== boreholeId) continue;
     const selected = s.photos.filter((p) => p.boreholeId === h.id);
     let offset = 0;
     while (offset < selected.length) {
@@ -41,14 +47,14 @@ export function locationSheets(s: ReportSnapshot, imagery?: MapBackground) {
   const mapScene = renderTechnicalMap(
     s.map,
     imagery,
-    s.templateVersion === '0.8.11' ? 'metro' : 'legacy',
+    templateSince(s.templateVersion, '0.8.11') ? 'metro' : 'legacy',
   );
   const firstCount = s.map.points.some((p) => p.code.length > 24) ? 0 : 6;
   const first = s.map.points.slice(0, firstCount),
     remaining = s.map.points.slice(firstCount);
   const notes = s.report.notes;
   const inlineNotes = notes.length <= 600 ? notes : '';
-  const legend = `<aside class="legend"><h3>Legenda</h3><p>● ${s.templateVersion === '0.8.11' ? 'Azul' : 'Laranja'}: furo incluído</p><p>● Cinza: furo de referência</p><p>UTM ${s.map.zone}${e(s.map.hemisphere)}<br>SIRGAS2000</p>${mapScene.references ? '<p>Rótulos [n]: referência na tabela de coordenadas.</p>' : ''}${mapScene.omitted ? '<p>Furos de referência sem rótulo por densidade: consultar a tabela.</p>' : ''}</aside>`;
+  const legend = `<aside class="legend"><h3>Legenda</h3><p>● ${templateSince(s.templateVersion, '0.8.11') ? 'Azul' : 'Laranja'}: furo incluído</p><p>● Cinza: furo de referência</p><p>UTM ${s.map.zone}${e(s.map.hemisphere)}<br>SIRGAS2000</p>${mapScene.references ? '<p>Rótulos [n]: referência na tabela de coordenadas.</p>' : ''}${mapScene.omitted ? '<p>Furos de referência sem rótulo por densidade: consultar a tabela.</p>' : ''}</aside>`;
   const main = `<section class="page location">${sheetHeader(s, 'Croqui de localização')}<div class="map-visual">${mapScene.svg}</div>${imageCredits}<div class="map-bottom">${first.length ? coordinates(first, s.map.points, mapScene.references) : '<p class="note">Coordenadas na folha de continuação.</p>'}${legend}</div><p class="note">Croqui técnico baseado nas coordenadas oficiais dos furos. Limites do terreno e vias não foram cadastrados.</p>${inlineNotes ? `<p class="report-note">${e(inlineNotes)}</p>` : ''}${sheetFooter(s, undefined, summary)}</section>`;
   const tables = chunks(remaining, firstCount === 0 ? 8 : 12)
     .map(

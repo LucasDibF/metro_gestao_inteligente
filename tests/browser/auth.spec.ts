@@ -199,3 +199,62 @@ test('login and MFA work through the browser on desktop and mobile', async ({ pa
     await admin.$disconnect();
   }
 });
+
+test('password change checks the current password and keeps the session', async ({ page }) => {
+  const admin = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.MIGRATION_DATABASE_URL }),
+  });
+  const email = `browser-${crypto.randomUUID()}@example.invalid`;
+  const password = crypto.randomUUID() + '!';
+  const newPassword = crypto.randomUUID() + '!';
+  const user = await admin.user.create({
+    data: { email, passwordHash: await hashPassword(password) },
+  });
+  const tenant = await admin.tenant.create({
+    data: {
+      name: 'Empresa da troca de senha',
+      memberships: { create: { userId: user.id, role: 'ADMIN' } },
+    },
+  });
+  try {
+    async function login(secret: string) {
+      await page.getByLabel('Email', { exact: true }).fill(email);
+      await page.getByLabel('Senha', { exact: true }).fill(secret);
+      await page.getByLabel('ID da empresa', { exact: true }).fill(tenant.id);
+      await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+      await expect(page.getByRole('heading', { name: tenant.name })).toBeVisible();
+    }
+    async function fill(current: string, next: string, confirmation = next) {
+      await page.getByLabel('Senha atual', { exact: true }).fill(current);
+      await page.getByLabel('Nova senha', { exact: true }).fill(next);
+      await page.getByLabel('Confirme a nova senha', { exact: true }).fill(confirmation);
+      await page.getByRole('button', { name: 'Alterar senha', exact: true }).click();
+    }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/');
+    await login(password);
+    await page.getByRole('button', { name: 'Segurança da conta', exact: true }).click();
+
+    await fill(password, newPassword, newPassword + 'x');
+    await expect(page.getByRole('alert')).toContainText('A confirmação não corresponde');
+
+    await fill('senha-atual-incorreta', newPassword);
+    await expect(page.getByRole('alert')).toContainText('A senha atual não confere');
+    await expect(page.getByRole('heading', { name: tenant.name })).toBeVisible();
+
+    await fill(password, newPassword);
+    await expect(page.getByRole('status')).toContainText('Senha alterada');
+    await expect(page.getByLabel('Senha atual', { exact: true })).toHaveValue('');
+    await expect(page.getByRole('heading', { name: tenant.name })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Sair da conta' }).click();
+    await expect(page.getByRole('heading', { name: 'Entre na sua conta' })).toBeVisible();
+    await login(newPassword);
+  } finally {
+    await admin.authSession.deleteMany({ where: { userId: user.id } });
+    await admin.membership.deleteMany({ where: { userId: user.id } });
+    await admin.user.delete({ where: { id: user.id } });
+    await admin.tenant.delete({ where: { id: tenant.id } });
+    await admin.$disconnect();
+  }
+});

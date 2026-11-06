@@ -34,23 +34,19 @@ test('combined metre save rolls back both records, preserves neighbouring soil a
       soilColor: 'Marrom',
       soilMoisture: 'Úmida',
     };
-    // Soil validation happens after the SPT insert: failure must roll it back.
-    await assert.rejects(
-      service.save(
-        c,
-        workId,
-        hole.id,
-        parseSpt(
-          {
-            depthM: '0',
-            advances: [{ blows: 1, penetrationMm: 10 }],
-            soil,
-            technicalVersion: hole.technicalVersion,
-          },
-          false,
-        ),
-      ),
+    // Partial soil intervals are valid. Force a storage failure after the SPT
+    // insert to verify atomic rollback independently of terminal-depth rules.
+    const rejected = parseSpt(
+      {
+        depthM: '0',
+        advances: [{ blows: 1, penetrationMm: 10 }],
+        soil,
+        technicalVersion: hole.technicalVersion,
+      },
+      false,
     );
+    rejected.soil!.soilType = 'x'.repeat(121); // Exceeds the database column limit.
+    await assert.rejects(service.save(c, workId, hole.id, rejected));
     assert.equal(await admin.sptTest.count({ where: { boreholeId: hole.id } }), 0);
     assert.equal(await admin.soilLayer.count({ where: { boreholeId: hole.id } }), 0);
     assert.equal(
@@ -74,7 +70,7 @@ test('combined metre save rolls back both records, preserves neighbouring soil a
       depthM: '3',
       advances: [4, 6, 8].map((blows) => ({ blows, penetrationMm: 150 })),
       soil,
-      fieldDetails: { executionMethod: 'TH', sampleRecovery: 'INTEGRA' },
+      fieldDetails: { executionMethod: 'TH' },
       technicalVersion: before.technicalVersion,
     };
     const saved = await service.save(c, workId, hole.id, parseSpt(input, false));
@@ -97,7 +93,6 @@ test('combined metre save rolls back both records, preserves neighbouring soil a
     assert.equal(layers[2].soilColor, null);
     assert.deepEqual((await service.get(c, workId, hole.id, '3'))?.fieldDetails, {
       executionMethod: 'TH',
-      sampleRecovery: 'INTEGRA',
     });
     assert.equal(await service.get(c, workId, hole.id, '4'), null);
     const edits = await Promise.allSettled(

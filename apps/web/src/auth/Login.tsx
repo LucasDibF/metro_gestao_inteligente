@@ -40,7 +40,7 @@ export function Login({
         <div className="login-brand">
           <Brand />
         </div>
-        <h2 id="login-title">Entre na sua conta</h2>
+        <h1 id="login-title">Entre na sua conta</h1>
         <p>Informe seus dados para continuar.</p>
         <form onSubmit={submit} aria-busy={busy}>
           <fieldset disabled={busy}>

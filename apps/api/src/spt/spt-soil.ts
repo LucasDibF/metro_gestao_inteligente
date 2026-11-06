@@ -22,8 +22,11 @@ export async function saveMetreSoil(
   executedDepthM: Prisma.Decimal | null,
 ) {
   const interval = metreInterval(depthM);
-  if (executedDepthM !== null && Number(interval.toM) > Number(executedDepthM))
-    throw new BadRequestException('Soil interval exceeds executed depth');
+  if (executedDepthM !== null) {
+    if (Number(interval.fromM) >= Number(executedDepthM))
+      throw new BadRequestException('Soil interval exceeds executed depth');
+    interval.toM = String(Math.min(Number(interval.toM), Number(executedDepthM)));
+  }
   const scope = { tenantId: context.tenantId, workId, boreholeId };
   const overlapping = await tx.soilLayer.findMany({
     where: {

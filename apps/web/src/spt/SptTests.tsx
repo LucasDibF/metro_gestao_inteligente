@@ -3,7 +3,7 @@ import { SoilStateText } from './SoilState';
 import { FuroNavigation, type FuroSection } from './FuroNavigation';
 import { canRecordField } from '../auth/permissions';
 import { hasRole } from '../auth/permissions';
-import { MetreDetails, methods, recoveries, type FieldDetails } from './MetreDetails';
+import { MetreDetails, type FieldDetails } from './MetreDetails';
 import { LoadingState } from '../ui/LoadingState';
 import { Button } from '../ui/Button';
 import { ArrowLeft, Plus, X, Save, Pencil, ArrowRight } from 'lucide-react';
@@ -13,50 +13,21 @@ import { FieldSubmission } from './FieldSubmission';
 import { TechnicalDetails } from './TechnicalDetails';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { auth, type Profile } from '../auth/client';
-interface Advance {
-  blows: number;
-  penetrationMm: number;
+import {
+  sptResultLabels as labels,
+  type Advance,
+  type SptRecord as Record,
+  type SptPage as Page,
+} from './record-types';
+import { SptRecordSummary } from './SptRecordSummary';
+import { readAdvances } from './read-advances';
+import { defaultInterruptionReason, resolveInterruptionReason } from './interruption-reason';
+function clearInterruption(form: HTMLFormElement | null): void {
+  const reason = form?.elements.namedItem('reason');
+  const ending = form?.elements.namedItem('ending');
+  if (reason instanceof HTMLTextAreaElement) reason.value = '';
+  if (ending instanceof HTMLInputElement) ending.checked = false;
 }
-interface Result {
-  status: 'NOT_TESTED' | 'CONVENTIONAL' | 'INCOMPLETE' | 'INTERRUPTED' | 'REQUIRES_REVIEW';
-  nSpt: number | null;
-  reason: string;
-}
-interface Record {
-  id: string;
-  depthM: string;
-  advances: Advance[];
-  fieldDetails?: FieldDetails | null;
-  interruptionReason: string | null;
-  result: Result;
-  version: number;
-  soil: Array<{
-    id: string;
-    fromM: string;
-    toM: string;
-    soilType: string;
-    description: string;
-    soilColor?: string | null;
-    soilMoisture?: string | null;
-  }>;
-}
-interface Page {
-  reviewState: string;
-  navigation: Array<{ id: string; depthM: string }>;
-  nextDepth: string;
-  technicalVersion: number;
-  items: Record[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-const labels = {
-  NOT_TESTED: 'Primeiro metro · registro de solo, sem ensaio SPT',
-  CONVENTIONAL: 'Cálculo convencional',
-  INCOMPLETE: 'Ensaio incompleto',
-  INTERRUPTED: 'Ensaio interrompido',
-  REQUIRES_REVIEW: 'Revisão técnica necessária',
-};
 export function SptTests({
   workId,
   workName,
@@ -82,7 +53,7 @@ export function SptTests({
   );
   const details = section !== 'field';
   const setDetails = (value: boolean) => setSection(value ? 'overview' : 'field');
-  const [nextDepth, setNextDepth] = useState('1');
+  const [newMetreDepth, setNewMetreDepth] = useState('1');
   const [formSequence, setFormSequence] = useState(0);
   const [depthValue, setDepthValue] = useState('1');
   const formRef = useRef<HTMLFormElement>(null);
@@ -137,7 +108,7 @@ export function SptTests({
         if (active) {
           setData(value);
           if (!formRef.current) {
-            setNextDepth(value.nextDepth);
+            setNewMetreDepth(value.nextDepth);
             setDepthValue(value.nextDepth);
           }
         }
@@ -171,37 +142,21 @@ export function SptTests({
     const values = new FormData(event.currentTarget);
     setError('');
     setMessage('');
-    const advances: Advance[] = [];
-    let trailing = false;
-    for (let i = 0; i < 3; i++) {
-      const blows = String(values.get(`blows-${i}`) ?? '').trim();
-      const penetration = String(values.get(`penetration-${i}`) ?? '').trim();
-      if (!blows && !penetration) {
-        trailing = true;
-        continue;
-      }
-      if (trailing || !blows || !penetration) {
-        setError(
-          'Preencha golpes e penetração na ordem dos avanços. Deixe os avanços não executados completamente vazios.',
-        );
-        return;
-      }
-      if (!/^\d+$/.test(blows) || !/^\d+(\.\d)?$/.test(penetration)) {
-        setError('Informe golpes inteiros e penetração em centímetros com até uma casa decimal.');
-        return;
-      }
-      const [whole, fraction = '0'] = penetration.split('.');
-      const penetrationMm = Number(whole) * 10 + Number(fraction);
-      if (!Number.isSafeInteger(Number(blows)) || !Number.isSafeInteger(penetrationMm)) {
-        setError('Os valores informados estão fora do intervalo aceito.');
-        return;
-      }
-      advances.push({ blows: Number(blows), penetrationMm });
+    let advances: Advance[];
+    try {
+      advances = readAdvances(values);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Não foi possível ler os avanços.');
+      return;
     }
     const next = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'next';
-    const reason =
-      String(values.get('reason') ?? '').trim() ||
-      (values.get('ending') === 'on' ? 'Encerramento registrado em campo' : null);
+    const reason = initialSoil
+      ? null
+      : resolveInterruptionReason({
+          typed: String(values.get('reason') ?? ''),
+          ending: values.get('ending') === 'on',
+          advances,
+        });
     setBusy(true);
     try {
       const saved = await auth.request<Record>(current === 'new' ? base : `${base}/${current.id}`, {
@@ -211,14 +166,13 @@ export function SptTests({
           advances,
           ...(initialSoil ? { recordType: 'INITIAL_SOIL' } : {}),
           soil: {
-            soilType: String(values.get('soilType')),
+            soilType: String(values.get('soilType')).trim(),
             description: String(values.get('soilDescription')),
             soilColor: String(values.get('soilColor')) || null,
             soilMoisture: String(values.get('soilMoisture')) || null,
           },
           fieldDetails: {
             executionMethod: String(values.get('executionMethod')) || null,
-            sampleRecovery: String(values.get('sampleRecovery')) || null,
           },
           technicalVersion: data.technicalVersion,
           interruptionReason: reason,
@@ -226,7 +180,7 @@ export function SptTests({
         }),
       });
       const following = String(Number(values.get('depth')) + 1);
-      setNextDepth(following);
+      setNewMetreDepth(following);
       setDepthValue(following);
       setFormSequence((v) => v + 1);
       if (next) {
@@ -266,7 +220,7 @@ export function SptTests({
       ]);
       setData(fresh);
       setDepthValue(depth);
-      setNextDepth(depth);
+      setNewMetreDepth(depth);
       setFormSequence((v) => v + 1);
       setEditing(record ?? 'new');
       setResult(null);
@@ -348,7 +302,9 @@ export function SptTests({
           <Button
             icon={Plus}
             onClick={() => {
-              setDepthValue(nextDepth);
+              setNewMetreDepth(data.nextDepth);
+              setDepthValue(data.nextDepth);
+              setFormSequence((v) => v + 1);
               setEditing('new');
               setResult(null);
               setError('');
@@ -368,10 +324,17 @@ export function SptTests({
         }}
         disabled={busy || Boolean(editing) || submissionEditing}
       />
+      {data?.reviewState === 'DRAFT' && data.reviewNote ? (
+        <div className="notice review-return-note">
+          <strong>Devolvido para correção</strong>
+          <p>{data.reviewNote}</p>
+        </div>
+      ) : null}
       {data && !canWrite && hasRole(profile, 'OPERATOR') ? (
         <p className="notice">
-          Registro enviado para análise. As alterações ficam bloqueadas até o engenheiro devolver
-          para correção.
+          {data.reviewState === 'APPROVED'
+            ? 'Furo aprovado tecnicamente. As alterações de campo ficam bloqueadas.'
+            : 'Registro enviado para análise. As alterações ficam bloqueadas até o engenheiro devolver para correção.'}
         </p>
       ) : null}
       {message ? (
@@ -444,13 +407,16 @@ export function SptTests({
                 id="spt-depth"
                 name="depth"
                 type="number"
-                min="0"
+                min={current ? '0' : '1'}
                 max="999999.99"
                 step="0.01"
                 required
-                defaultValue={current?.depthM ?? nextDepth}
+                defaultValue={current?.depthM ?? newMetreDepth}
                 readOnly={Boolean(current)}
                 onChange={(e) => setDepthValue(e.target.value)}
+                onBlur={(e) => {
+                  if (!current && Number(e.target.value) === 1) clearInterruption(e.target.form);
+                }}
               />
               <p className="help">
                 Informe a profundidade deste ensaio. Ela não altera a profundidade planejada do
@@ -475,6 +441,15 @@ export function SptTests({
                     type="checkbox"
                     name="ending"
                     defaultChecked={Boolean(current?.interruptionReason)}
+                    onChange={(e) => {
+                      const reason = e.target.form?.elements.namedItem('reason');
+                      if (
+                        !e.target.checked &&
+                        reason instanceof HTMLTextAreaElement &&
+                        reason.value.trim() === defaultInterruptionReason
+                      )
+                        reason.value = '';
+                    }}
                   />
                   Último metro do furo
                 </label>
@@ -531,6 +506,8 @@ export function SptTests({
                   name="soilType"
                   list="spt-soil-types"
                   required
+                  pattern=".*\S.*"
+                  title="Informe o tipo de solo."
                   maxLength={120}
                   defaultValue={uniformSoil?.soilType ?? ''}
                 />
@@ -674,55 +651,7 @@ export function SptTests({
           <ul className="work-list">
             {data.items.map((record) => (
               <li key={record.id}>
-                <div>
-                  <h3>Ensaio a {Number(record.depthM).toLocaleString('pt-BR')} m</h3>
-                  <p>
-                    {labels[record.result.status]} · N-SPT:{' '}
-                    {record.result.nSpt === null ? 'Não calculado' : record.result.nSpt}
-                  </p>
-                  <p>
-                    {record.advances.length
-                      ? record.advances
-                          .map(
-                            (advance) =>
-                              `${advance.blows} golpes / ${(advance.penetrationMm / 10).toLocaleString('pt-BR')} cm`,
-                          )
-                          .join(' · ')
-                      : 'Sem avanços registrados'}
-                  </p>
-                  {record.soil.length ? (
-                    record.soil.map((layer) => {
-                      const state = classifySoilState(layer.soilType, record.result);
-                      return (
-                        <p key={layer.id}>
-                          {formatSoilDescription([
-                            layer.soilType,
-                            state.status === 'CLASSIFIED' ? state.designation : null,
-                            layer.soilColor,
-                            layer.soilMoisture,
-                            layer.description,
-                          ])}
-                        </p>
-                      );
-                    })
-                  ) : (
-                    <p>Descrição do solo pendente.</p>
-                  )}
-                  {record.fieldDetails ? (
-                    <p>
-                      {record.fieldDetails.executionMethod
-                        ? methods[record.fieldDetails.executionMethod]
-                        : 'Método não informado'}{' '}
-                      · Recuperação:{' '}
-                      {record.fieldDetails.sampleRecovery
-                        ? recoveries[record.fieldDetails.sampleRecovery]
-                        : 'não informada'}
-                    </p>
-                  ) : null}
-                  {record.interruptionReason ? (
-                    <p>Interrupção: {record.interruptionReason}</p>
-                  ) : null}
-                </div>
+                <SptRecordSummary record={record} />
                 {canWrite ? (
                   <Button
                     icon={Pencil}

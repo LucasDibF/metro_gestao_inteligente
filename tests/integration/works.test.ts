@@ -84,7 +84,9 @@ test('works enforce tenant boundaries, database write roles, pagination and conc
     };
     assert.equal(work.tenantId, tenantIds[0]);
     assert.equal(work.state, 'GO');
-    for (const index of [1, 2, 3]) assert.equal((await call(`/${work.id}`, index)).status, 200);
+    for (const index of [1, 3]) assert.equal((await call(`/${work.id}`, index)).status, 200);
+    // A field-only operator sees a work only after being assigned to it.
+    assert.equal((await call(`/${work.id}`, 2)).status, 404);
     for (const index of [2, 3])
       assert.equal((await call('', index, 'POST', { name: 'Denied' })).status, 403);
     assert.equal((await call('', 1, 'POST', { name: 'Engineer work' })).status, 201);

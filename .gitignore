@@ -7,5 +7,10 @@ playwright-report/
 apps/web/.impeccable/review/
 
 work/
+graphify-out/
 
 .env.test
+
+# Ambiente e evidências privadas dos testes de carga
+.env.loadtest
+load-test-results/

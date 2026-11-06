@@ -323,3 +323,7 @@ Azul base #1600ff, hover #1200cc e superfícies de seleção #e8e6ff. No escuro,
 Brand usa imagens SVG locais com nome acessível completo. Login 244×86px, menu 144×44px e rodapé 136×48px, com object-fit contain; temas alternam o wordmark mantendo proporções. Ícone e favicon usam o mesmo ativo. Demais tipografias, dimensões e movimentos da interface são preservados.
 
 Novas emissões usam template 0.8.11, acentos e marcadores do croqui azuis e legenda atualizada. O nome da empresa emissora permanece; Metro identifica a plataforma. Templates históricos conservam sua paleta. Login, funções e segredos não foram alterados; novas configurações MFA apenas mostram o novo nome do emissor.
+
+### Identificação opcional da empresa — 03/11/2026
+
+O perfil da empresa pode guardar contatos e logo fornecidos pelo administrador no provisionamento. Quando disponível, a logo PNG aparece antes do título da empresa na área autenticada, com largura máxima de 280px e altura máxima de 76px, proporção preservada, alinhamento à esquerda e 12px até o título. É decorativa para leitores de tela porque o nome completo permanece no h1. Empresas sem logo mantêm o cabeçalho existente. A marca Metro e a navegação permanecem da plataforma; a identidade da empresa não altera cores globais nem as permissões.

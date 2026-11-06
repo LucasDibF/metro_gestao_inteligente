@@ -5,7 +5,20 @@ export interface Tokens {
 export interface Profile {
   localTesting?: boolean;
   userId: string;
-  tenant: { id: string; name: string };
+  tenant: {
+    id: string;
+    name: string;
+    profile?: {
+      email?: string;
+      phone?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      workingHours?: string;
+      logoDataUrl?: string;
+    };
+  };
   role: 'ADMIN' | 'ENGINEER' | 'OPERATOR' | 'COMMERCIAL' | 'VIEWER';
   additionalRoles?: Profile['role'][];
   canDownloadReports?: boolean;
@@ -31,7 +44,33 @@ export class ApiError extends Error {
     super(message);
   }
 }
+const connectionFailureMessage =
+  'Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente.';
+const timeoutMessage =
+  'O serviço demorou demais para responder. Verifique sua conexão e tente novamente.';
+const longRequestTimeoutMs = 120_000;
+/** Deadline for photo uploads and PDF downloads, which outlast the default 12 s budget. */
+export function longRequestSignal(): AbortSignal {
+  return AbortSignal.timeout(longRequestTimeoutMs);
+}
+function transportFailure(error: unknown): ApiError {
+  const timedOut =
+    error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError');
+  return new ApiError(0, timedOut ? timeoutMessage : connectionFailureMessage);
+}
+/** 401 codes that reject what the user typed; the session itself is still valid. */
+export function isCredentialFailure(code?: string): boolean {
+  return code === 'MFA_VERIFICATION_FAILED' || code === 'PASSWORD_INVALID';
+}
 const domainMessages: Record<string, string> = {
+  PASSWORD_INVALID: 'A senha atual não confere. Sua sessão continua ativa.',
+  EXECUTED_DEPTH_INVALID: 'Informe uma profundidade executada maior que zero.',
+  WATER_LEVEL_BELOW_DEPTH:
+    'O nível d’água não pode ser maior que a profundidade executada do furo.',
+  FIELD_DATE_INVALID: 'Informe uma data de campo válida.',
+  EXECUTED_DEPTH_EXCLUDES_DATA:
+    'A profundidade executada não pode ser menor que os ensaios ou camadas já registrados. Confira a profundidade do último metro.',
+
   INTERACTIVE_SHEET_LIMIT:
     'Este furo excede o limite da folha interativa (1.000 m ou 1.000 registros). Consulte os registros na listagem.',
   MAP_EXCLUDES_BOREHOLE:
@@ -53,6 +92,8 @@ const domainMessages: Record<string, string> = {
   SOIL_DESCRIPTION_REQUIRED: 'Preencha a descrição do solo junto ao ensaio.',
   SPT_READINGS_INCOMPLETE:
     'Há ensaio incompleto. Complete os avanços ou registre o motivo de interrupção, conforme ocorreu em campo.',
+  SPT_METRES_MISSING:
+    'Há metros sem registro até a profundidade executada. Registre cada metro; se não houve ensaio, informe o motivo de interrupção.',
   TECHNICAL_DATA_INCOMPLETE:
     'Preencha a data, a profundidade executada, as camadas e os ensaios dentro do limite do furo.',
   REVIEW_STATE_CONFLICT: 'A situação da revisão mudou. Recarregue os dados antes de continuar.',
@@ -73,6 +114,7 @@ const messages: Record<number, string> = {
   403: 'Seu perfil não permite realizar esta ação.',
   404: 'Este registro não está disponível na sua empresa.',
   409: 'Os dados mudaram ou já existem. Recarregue a tela e confira o registro.',
+  413: 'O envio ultrapassa o limite aceito. As fotografias podem ter até 8 MB.',
   429: 'Muitas tentativas. Aguarde um minuto antes de tentar novamente.',
 };
 interface AuthState {
@@ -118,11 +160,17 @@ export class AuthClient {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
-    } catch {
-      throw new ApiError(
-        0,
-        'Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente.',
-      );
+    } catch (error) {
+      throw transportFailure(error);
+    }
+  }
+  private async readBody<T>(read: () => Promise<T>): Promise<T> {
+    try {
+      return await read();
+    } catch (error) {
+      if (error instanceof DOMException || error instanceof TypeError)
+        throw transportFailure(error);
+      throw error;
     }
   }
   private async decode<T>(response: Response): Promise<T> {
@@ -168,7 +216,9 @@ export class AuthClient {
         body.code,
       );
     }
-    return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
+    return response.status === 204
+      ? (undefined as T)
+      : this.readBody(() => response.json() as Promise<T>);
   }
   async developmentAvailable(): Promise<boolean> {
     const response = await this.send('/auth/dev-status');
@@ -262,7 +312,7 @@ export class AuthClient {
             .json()
             .catch(() => ({}))) as { code?: string })
         : {};
-    if (response.status === 401 && failure.code !== 'MFA_VERIFICATION_FAILED') {
+    if (response.status === 401 && !isCredentialFailure(failure.code)) {
       // Another request may already have renewed this access token.
       if (this.state.tokens?.accessToken === token) await this.renew();
       if (generation !== this.state.generation)
@@ -280,7 +330,7 @@ export class AuthClient {
         );
       if (response.status === 401) this.clear();
     }
-    return response.ok && read ? read(response) : this.decode<T>(response);
+    return response.ok && read ? this.readBody(() => read(response)) : this.decode<T>(response);
   }
   async logout() {
     try {

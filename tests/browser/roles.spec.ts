@@ -24,6 +24,14 @@ test('administration creates access, commerce maintains clients, and operator su
       users.push(user);
     }
     const work = await db.work.create({ data: { tenantId: tenant.id, name: 'Obra de campo' } });
+    await db.workAssignment.create({
+      data: {
+        workId: work.id,
+        tenantId: tenant.id,
+        operatorId: users[1].id,
+        assignedBy: users[0].id,
+      },
+    });
     const hole = await db.borehole.create({
       data: { tenantId: tenant.id, workId: work.id, code: 'SP-01' },
     });
@@ -109,6 +117,10 @@ test('administration creates access, commerce maintains clients, and operator su
     await expect(page.getByRole('button', { name: 'Clientes', exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: work.name, exact: true }).click();
     await expect(page.getByRole('button', { name: 'Cadastrar furo', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Abrir furo SP-01', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Relatórios da obra', exact: true })).toHaveCount(
+      0,
+    );
     await page.getByRole('button', { name: 'Abrir furo SP-01', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Revisão técnica', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Análise geotécnica', exact: true })).toHaveCount(
@@ -268,6 +280,7 @@ test('administration creates access, commerce maintains clients, and operator su
     await db.sptTest.deleteMany({ where: { tenantId: tenant.id } });
     await db.borehole.deleteMany({ where: { tenantId: tenant.id } });
     await db.folder.deleteMany({ where: { tenantId: tenant.id } });
+    await db.workAssignment.deleteMany({ where: { tenantId: tenant.id } });
     await db.work.deleteMany({ where: { tenantId: tenant.id } });
     await db.client.deleteMany({ where: { tenantId: tenant.id } });
     await db.authSession.deleteMany({ where: { userId: { in: allIds } } });

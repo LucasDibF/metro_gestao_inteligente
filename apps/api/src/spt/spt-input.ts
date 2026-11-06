@@ -82,7 +82,7 @@ export function parseSpt(body: unknown, editing: boolean) {
   const fieldDetails =
     input.fieldDetails === undefined
       ? undefined
-      : technicalInput(input.fieldDetails, ['executionMethod', 'sampleRecovery']);
+      : technicalInput(input.fieldDetails, ['executionMethod']);
   return {
     fieldDetails: fieldDetails
       ? {
@@ -93,7 +93,6 @@ export function parseSpt(body: unknown, editing: boolean) {
             'CA',
             'SP_CA',
           ]),
-          sampleRecovery: choice(fieldDetails.sampleRecovery, ['INTEGRA', 'PARCIAL', 'NENHUMA']),
         }
       : undefined,
     soil,
