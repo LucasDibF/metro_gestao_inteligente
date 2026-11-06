@@ -1,164 +1,13 @@
 import 'package:flutter/material.dart';
+import 'metro_animations.dart' show MetroPageTransitions;
+import 'metro_fonts.dart';
+import 'metro_motion.dart';
+import 'metro_palette.dart';
 
-/// Metro palette from the web tokens (`apps/web/src/styles/theme.css` and
-/// `brand.css`), converted from OKLCH. Text that must survive sunlight keeps
-/// darker tones than the web where the web value falls below 4.5:1 (3:1 for
-/// field borders): [muted], [inputLine] and [noticeText] in the light theme.
-@immutable
-class MetroPalette extends ThemeExtension<MetroPalette> {
-  const MetroPalette({
-    required this.brand,
-    required this.brandPressed,
-    required this.onBrand,
-    required this.brandText,
-    required this.selection,
-    required this.ink,
-    required this.muted,
-    required this.page,
-    required this.surface,
-    required this.subtle,
-    required this.line,
-    required this.inputLine,
-    required this.focus,
-    required this.errorSurface,
-    required this.errorText,
-    required this.noticeSurface,
-    required this.noticeText,
-  });
-
-  /// Fill of the main action and the selected navigation.
-  final Color brand, brandPressed, onBrand;
-
-  /// Brand colour for text and icons on [page], [surface] and [selection].
-  final Color brandText;
-  final Color selection;
-  final Color ink, muted;
-  final Color page, surface, subtle, line, inputLine;
-
-  /// Keyboard and field focus (web `--focus`, cobalt).
-  final Color focus;
-  final Color errorSurface, errorText, noticeSurface, noticeText;
-
-  static const light = MetroPalette(
-    brand: Color(0xff1600ff),
-    brandPressed: Color(0xff1200cc),
-    onBrand: Colors.white,
-    brandText: Color(0xff1600ff),
-    selection: Color(0xffe8e6ff),
-    ink: Color(0xff15110d),
-    muted: Color(0xff57524c),
-    page: Color(0xfffcfaf7),
-    surface: Colors.white,
-    subtle: Color(0xfff6f3ef),
-    line: Color(0xffd9d7d5),
-    inputLine: Color(0xff7d7770),
-    focus: Color(0xff007bad),
-    errorSurface: Color(0xffffebe7),
-    errorText: Color(0xffc5372f),
-    noticeSurface: Color(0xffe8f7e8),
-    noticeText: Color(0xff2d6a31),
-  );
-
-  static const dark = MetroPalette(
-    brand: Color(0xff6552ff),
-    brandPressed: Color(0xff5644e8),
-    onBrand: Colors.white,
-    brandText: Color(0xffb2aaff),
-    selection: Color(0xff29224f),
-    ink: Color(0xfff8f4f2),
-    muted: Color(0xff9b9795),
-    page: Color(0xff110c08),
-    surface: Color(0xff1d1713),
-    subtle: Color(0xff0a0704),
-    line: Color(0xff322d29),
-    inputLine: Color(0xff75706c),
-    focus: Color(0xff32b3e6),
-    errorSurface: Color(0xff47211c),
-    errorText: Color(0xfff27a6e),
-    noticeSurface: Color(0xff213321),
-    noticeText: Color(0xff71b173),
-  );
-
-  @override
-  MetroPalette copyWith() => this;
-
-  @override
-  MetroPalette lerp(MetroPalette? other, double t) {
-    if (other == null) return this;
-    Color mix(Color a, Color b) => Color.lerp(a, b, t)!;
-    return MetroPalette(
-      brand: mix(brand, other.brand),
-      brandPressed: mix(brandPressed, other.brandPressed),
-      onBrand: mix(onBrand, other.onBrand),
-      brandText: mix(brandText, other.brandText),
-      selection: mix(selection, other.selection),
-      ink: mix(ink, other.ink),
-      muted: mix(muted, other.muted),
-      page: mix(page, other.page),
-      surface: mix(surface, other.surface),
-      subtle: mix(subtle, other.subtle),
-      line: mix(line, other.line),
-      inputLine: mix(inputLine, other.inputLine),
-      focus: mix(focus, other.focus),
-      errorSurface: mix(errorSurface, other.errorSurface),
-      errorText: mix(errorText, other.errorText),
-      noticeSurface: mix(noticeSurface, other.noticeSurface),
-      noticeText: mix(noticeText, other.noticeText),
-    );
-  }
-}
-
-extension MetroPaletteContext on BuildContext {
-  /// Palette of the active (light or dark) theme.
-  MetroPalette get metro =>
-      Theme.of(this).extension<MetroPalette>() ?? MetroPalette.light;
-}
-
-/// Web motion (`DESIGN.md` › Elevation & Depth): colour changes 150 ms,
-/// collapsing 200 ms, entering 300 ms on an ease-out-expo curve, leaving
-/// 200 ms ease-in. Every animation is skipped when the system reduces motion.
-abstract final class MetroMotion {
-  static const color = Duration(milliseconds: 150);
-  static const collapse = Duration(milliseconds: 200);
-  static const enter = Duration(milliseconds: 300);
-  static const exit = Duration(milliseconds: 200);
-
-  /// `cubic-bezier(0.16, 1, 0.3, 1)` from the web drawer and curve trace.
-  static const enterCurve = Cubic(0.16, 1, 0.3, 1);
-  static const exitCurve = Curves.easeIn;
-
-  /// Delay between consecutive items of a list that cascades in.
-  static const stagger = Duration(milliseconds: 45);
-
-  /// A pressed card shrinks quickly and springs back more slowly.
-  static const press = Duration(milliseconds: 90);
-  static const release = Duration(milliseconds: 420);
-  static const pressCurve = Curves.easeOut;
-
-  /// Overshoots a little before settling: a card springing back, a new status.
-  static const springCurve = Curves.easeOutBack;
-
-  /// One full turn of a busy icon, like the web loading icon.
-  static const spin = Duration(seconds: 1);
-
-  static bool reduced(BuildContext context) =>
-      MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-
-  /// [duration], or zero when the system asks for reduced motion.
-  static Duration of(BuildContext context, Duration duration) =>
-      reduced(context) ? Duration.zero : duration;
-}
-
-abstract final class MetroFonts {
-  /// Text and controls (web body).
-  static const sans = 'IBM Plex Sans';
-
-  /// Screen and section headings (web h1/h2).
-  static const heading = 'Fraunces';
-
-  /// Copyable data such as keys and codes.
-  static const mono = 'IBM Plex Mono';
-}
+export 'metro_animations.dart' show MetroPageTransitions;
+export 'metro_fonts.dart';
+export 'metro_motion.dart';
+export 'metro_palette.dart';
 
 abstract final class MetroSpace {
   static const xxs = 2.0;
@@ -196,15 +45,6 @@ abstract final class MetroIconSize {
 abstract final class MetroStroke {
   static const progress = 3.0;
 }
-
-const _tabularFigures = [FontFeature.tabularFigures()];
-
-/// Depth, blow counts and coordinates read better on aligned figures.
-const metroNumberStyle = TextStyle(
-  fontSize: 22,
-  fontWeight: FontWeight.w600,
-  fontFeatures: _tabularFigures,
-);
 
 TextTheme _textTheme(MetroPalette palette, String? sans, String? heading) {
   final base = TextStyle(
@@ -257,43 +97,6 @@ OutlineInputBorder _inputBorder(Color color, {double width = 1}) =>
       borderRadius: BorderRadius.circular(MetroRadius.control),
       borderSide: BorderSide(color: color, width: width),
     );
-
-/// Screen changes slide in from the side and fade, like the web drawer.
-class MetroPageTransitions extends PageTransitionsBuilder {
-  const MetroPageTransitions();
-
-  @override
-  Duration get transitionDuration => MetroMotion.enter;
-
-  @override
-  Duration get reverseTransitionDuration => MetroMotion.exit;
-
-  @override
-  Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    if (MetroMotion.reduced(context)) return child;
-    final enter = CurvedAnimation(
-      parent: animation,
-      curve: MetroMotion.enterCurve,
-      reverseCurve: MetroMotion.exitCurve,
-    );
-    return FadeTransition(
-      opacity: enter,
-      child: SlideTransition(
-        position: Tween(
-          begin: const Offset(0.08, 0),
-          end: Offset.zero,
-        ).animate(enter),
-        child: child,
-      ),
-    );
-  }
-}
 
 /// [fontFamily] and [headingFamily] are replaceable for tests that render
 /// with fonts loaded from the Flutter SDK.

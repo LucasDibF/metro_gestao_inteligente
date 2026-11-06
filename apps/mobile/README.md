@@ -36,9 +36,14 @@ Umidade não é acrescentada automaticamente à descrição do PDF. Recuperaçã
 | `lib/field/photo_recovery.dart` | Arquivos duráveis e recuperação de câmera Android |
 | `lib/field/hole_screen.dart` | Estado e navegação do furo; `hole_*_tab.dart` são as quatro seções, `hole_section_nav.dart` a barra ou trilho, `hole_status_strip.dart` o estado de sincronização |
 | `lib/field/field_export.dart` | Cópia assistida dos dados pendentes |
-| `lib/ui/metro_theme.dart` | Paleta clara e escura, fontes, animações, espaçamentos, raios, alvos de toque e tema |
+| `lib/ui/metro_theme.dart` | Espaçamentos, raios, alvos de toque e tema; reexporta paleta, tempos e fontes |
+| `lib/ui/metro_palette.dart` | Paleta clara e escura e `context.metro` |
+| `lib/ui/metro_motion.dart` | Tempos e curvas das animações (`MetroMotion`) |
+| `lib/ui/metro_fonts.dart` | Famílias de fonte e estilo dos números |
+| `lib/ui/metro_animations.dart` | Entrada em cascata, toque com mola, ícone girando e troca de tela |
 | `lib/ui/metro_layout.dart` | Larguras de conteúdo, colunas adaptativas e ação principal fixa |
-| `lib/ui/metro_widgets.dart` | Avisos, estados vazios e de falha, linhas, painéis e campos com rótulo |
+| `lib/ui/metro_widgets.dart` | Avisos, estados vazios e de falha, linhas e painéis; reexporta animações e campos |
+| `lib/ui/metro_fields.dart` | Campos com rótulo, erro junto à ação e fatos rótulo-valor |
 
 São usados componentes Flutter e ChangeNotifier. Sem infraestrutura adicional de estado ou um segundo motor técnico em Dart.
 
@@ -54,7 +59,7 @@ Cores, fontes e tamanhos vêm do tema; as telas não repetem valores. Botão pri
 
 A aparência segue o web. Títulos usam Fraunces 600, texto e controles IBM Plex Sans e dados copiáveis IBM Plex Mono, embutidas em `assets/fonts` (instâncias estáticas do Google Fonts, SIL OFL 1.1). O login usa a marca do web, convertida de SVG para PNG em `assets/brand`.
 
-As cores vêm dos tokens de `apps/web/src/styles/theme.css` e `brand.css`, em `MetroPalette` (`lib/ui/metro_theme.dart`), com tema claro e escuro conforme o aparelho. No claro, texto secundário, borda de campo e aviso positivo ficam mais escuros que no web, para manter 4,5:1 (3:1 na borda) sob sol; no escuro, texto e ícones da marca usam o lilás claro do web. As telas leem as cores por `context.metro`, nunca por valores fixos.
+As cores vêm dos tokens de `apps/web/src/styles/theme.css` e `brand.css`, em `MetroPalette` (`lib/ui/metro_palette.dart`), com tema claro e escuro conforme o aparelho. No claro, texto secundário, borda de campo e aviso positivo ficam mais escuros que no web, para manter 4,5:1 (3:1 na borda) sob sol; no escuro, texto e ícones da marca usam o lilás claro do web. As telas leem as cores por `context.metro`, nunca por valores fixos.
 
 As animações têm o ritmo do web (`MetroMotion`): troca de cor em 150 ms, recolhimento em 200 ms, entrada em 300 ms com a curva `cubic-bezier(0.16, 1, 0.3, 1)` e saída em 200 ms. Itens de lista entram em cascata, 45 ms um após o outro até o oitavo. Um painel tocado encolhe em 90 ms e volta com leve mola em 420 ms. O ícone de sincronização dá uma volta por segundo enquanto trabalha. Telas entram deslizando com fade, avisos surgem com fade e leve subida, e o estado de sincronização troca com transição. O toque muda a cor, sem ondulação. Com redução de movimento ativada no sistema, nada é animado.
 
