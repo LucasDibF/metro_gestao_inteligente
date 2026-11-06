@@ -2,7 +2,7 @@ import type { Page } from 'playwright';
 import { PRINT_LAYOUT } from '@spt/report-templates';
 
 /** Reject automatic browser fragmentation rather than publishing orphan pages. */
-export async function validateReportLayout(page: Page) {
+export async function validateReportLayout(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await document.fonts.ready;
     await Promise.all(

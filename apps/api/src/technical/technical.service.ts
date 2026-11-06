@@ -8,16 +8,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Borehole, Prisma, SoilLayer } from '@prisma/client';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
 import { lockWork, readWork } from '../works/work-lock';
 import { fieldChecklist } from './field-checklist';
+import { TechnicalDetailRows } from './technical-rows';
 import { validateReviewData } from './review-validation';
 import { depth, expectedVersion, technicalInput, text } from './technical-input';
 @Injectable()
 export class TechnicalService {
   constructor(@Inject(TenantDatabaseService) private readonly db: TenantDatabaseService) {}
-  async parent(tx: Prisma.TransactionClient, c: TenantContext, workId: string, boreholeId: string) {
+  async parent(
+    tx: Prisma.TransactionClient,
+    c: TenantContext,
+    workId: string,
+    boreholeId: string,
+  ): Promise<Borehole> {
     await lockWork(tx, c, workId);
     await tx.$queryRaw`SELECT id FROM boreholes WHERE id=${boreholeId}::uuid AND work_id=${workId}::uuid AND tenant_id=${c.tenantId}::uuid AND deleted_at IS NULL FOR UPDATE`;
     const hole = await tx.borehole.findFirst({
@@ -32,7 +38,7 @@ export class TechnicalService {
     c: TenantContext,
     workId: string,
     boreholeId: string,
-  ) {
+  ): Promise<Borehole> {
     await readWork(tx, c, workId);
     const hole = await tx.borehole.findFirst({
       where: { id: boreholeId, workId, tenantId: c.tenantId, deletedAt: null },
@@ -72,7 +78,7 @@ export class TechnicalService {
     workId: string,
     boreholeId: string,
     transaction?: Prisma.TransactionClient,
-  ) {
+  ): Promise<TechnicalDetailRows> {
     return this.db.run(
       c,
       async (tx) => {
@@ -104,7 +110,7 @@ export class TechnicalService {
     boreholeId: string,
     body: unknown,
     transaction?: Prisma.TransactionClient,
-  ) {
+  ): Promise<Borehole> {
     const value = technicalInput(body, [
       'technicalVersion',
       'executedDepthM',
@@ -199,7 +205,13 @@ export class TechnicalService {
       transaction,
     );
   }
-  async layer(c: TenantContext, workId: string, boreholeId: string, body: unknown, id?: string) {
+  async layer(
+    c: TenantContext,
+    workId: string,
+    boreholeId: string,
+    body: unknown,
+    id?: string,
+  ): Promise<SoilLayer> {
     const v = technicalInput(body, [
       'fromM',
       'toM',
@@ -258,7 +270,7 @@ export class TechnicalService {
     body: unknown,
     action: 'submit' | 'approve' | 'reject',
     transaction?: Prisma.TransactionClient,
-  ) {
+  ): Promise<Borehole> {
     const v = technicalInput(body, [
       'technicalVersion',
       'note',

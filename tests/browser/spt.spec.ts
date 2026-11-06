@@ -496,6 +496,15 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
+    // The report center downloads the same issue through the shared PDF helper.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.getByRole('button', { name: 'Relatórios', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Central de relatórios' })).toBeVisible();
+    const centerDownloaded = page.waitForEvent('download');
+    await page
+      .getByRole('button', { name: 'Baixar PDF Relatório sintético completo', exact: true })
+      .click();
+    expect((await centerDownloaded).suggestedFilename()).toBe('sondagem-emissao-1.pdf');
     await page.getByRole('button', { name: 'Sair da conta' }).click();
     await open(1);
     await expect(page.getByRole('button', { name: 'Registrar metro', exact: true })).toHaveCount(0);

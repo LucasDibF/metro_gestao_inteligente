@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { auth, longRequestSignal } from '../auth/client';
+import { auth } from '../auth/client';
+import { downloadIssuePdf } from '../reports/pdf-download';
 import { Button } from '../ui/Button';
 import { LoadingState } from '../ui/LoadingState';
 import { Search, Download, FolderOpen, ArrowLeft, ArrowRight } from 'lucide-react';
@@ -63,20 +64,17 @@ export function ReportCenter({
     setPage(1);
   }
   async function download(entry: Entry) {
+    const issueId = entry.issueId;
+    if (!issueId) return;
     setBusy(true);
     setError('');
     try {
-      const blob = await auth.request<Blob>(
-        `/obras/${entry.workId}/relatorios/${entry.id}/emissoes/${entry.issueId}/pdf`,
-        { signal: longRequestSignal() },
-        (r) => r.blob(),
-      );
-      const url = URL.createObjectURL(blob),
-        link = document.createElement('a');
-      link.href = url;
-      link.download = `sondagem-emissao-${entry.issueNumber}.pdf`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await downloadIssuePdf({
+        workId: entry.workId,
+        reportId: entry.id,
+        issueId,
+        issueNumber: entry.issueNumber,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível baixar.');
       onError(e);

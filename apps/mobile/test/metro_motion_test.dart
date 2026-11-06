@@ -26,6 +26,17 @@ double _scale(WidgetTester tester) =>
     tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale;
 
 void main() {
+  test('motion keeps the web timing', () {
+    expect(MetroMotion.color.inMilliseconds, 150);
+    expect(MetroMotion.collapse.inMilliseconds, 200);
+    expect(MetroMotion.enter.inMilliseconds, 300);
+    expect(MetroMotion.exit.inMilliseconds, 200);
+    expect(MetroMotion.stagger.inMilliseconds, 45);
+    expect(MetroMotion.press.inMilliseconds, 90);
+    expect(MetroMotion.release.inMilliseconds, 420);
+    expect(MetroMotion.spin.inMilliseconds, 1000);
+  });
+
   testWidgets('list panels cascade in, later items start later', (
     tester,
   ) async {

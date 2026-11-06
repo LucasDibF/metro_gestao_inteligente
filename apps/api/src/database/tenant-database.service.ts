@@ -1,13 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
+import { isUuid } from '../common/uuid';
 import { PoolSettings, poolSettings } from './pool-settings';
 
 export interface TenantContext {
   userId: string;
   tenantId: string;
 }
-
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class TenantDatabaseService {
@@ -20,7 +19,7 @@ export class TenantDatabaseService {
     operation: (tx: Prisma.TransactionClient) => Promise<T>,
     transaction?: Prisma.TransactionClient,
   ): Promise<T> {
-    if (!uuid.test(context.userId) || !uuid.test(context.tenantId)) {
+    if (!isUuid(context.userId) || !isUuid(context.tenantId)) {
       throw new Error('Invalid tenant context');
     }
     if (transaction) return operation(transaction);

@@ -1,5 +1,7 @@
-import { Prisma } from '@prisma/client';
+import { Borehole, BoreholeCoordinate, Prisma } from '@prisma/client';
+import type { PhotoReference } from '@spt/api-contracts';
 import { optionalText } from '../technical/technical-input';
+import { isUuid } from '../common/uuid';
 import { requireFieldWrite } from '../auth/field-access';
 import {
   BadRequestException,
@@ -9,30 +11,20 @@ import {
   NotFoundException,
   OnApplicationShutdown,
 } from '@nestjs/common';
-import { createHash, randomUUID } from 'node:crypto';
-import sharp from 'sharp';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
 import { TechnicalService } from '../technical/technical.service';
 import { expectedVersion, technicalInput, text } from '../technical/technical-input';
 import { coordinateInput, photoDistance } from './coordinates';
+import { BoreholeFilesRows, photoListSelect } from './files-rows';
+import { photoPurpose } from './photo-inspection';
+import { PhotoStagingService } from './photo-staging.service';
 import { closePrivateStorage, privateStorage } from './shared-storage';
-/** An object already written under its own new key, not yet referenced by any row. */
-export interface StagedPhoto {
-  objectKey: string;
-  thumbnailKey: string;
-  sha256: string;
-  mime: string;
-  sizeBytes: number;
-  caption: string;
-  purpose: string;
-  width: number;
-  height: number;
-}
 @Injectable()
 export class FilesService implements OnApplicationShutdown {
   constructor(
     @Inject(TenantDatabaseService) private readonly db: TenantDatabaseService,
     @Inject(TechnicalService) private readonly technical: TechnicalService,
+    @Inject(PhotoStagingService) private readonly staging: PhotoStagingService,
   ) {}
   onApplicationShutdown(): void {
     closePrivateStorage();
@@ -42,7 +34,7 @@ export class FilesService implements OnApplicationShutdown {
     workId: string,
     boreholeId: string,
     transaction?: Prisma.TransactionClient,
-  ) {
+  ): Promise<BoreholeFilesRows> {
     return this.db.run(
       c,
       async (tx) => {
@@ -57,21 +49,7 @@ export class FilesService implements OnApplicationShutdown {
           where: { ...where, deletedAt: null },
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           take: 100,
-          select: {
-            id: true,
-            caption: true,
-            purpose: true,
-            version: true,
-            gpsLatitude: true,
-            gpsLongitude: true,
-            crop: true,
-            processingState: true,
-            width: true,
-            height: true,
-            mime: true,
-            sizeBytes: true,
-            createdAt: true,
-          },
+          select: photoListSelect,
         });
         return {
           technicalVersion: hole.technicalVersion,
@@ -100,7 +78,7 @@ export class FilesService implements OnApplicationShutdown {
     kind: 'PLANNED' | 'EXECUTED',
     body: unknown,
     transaction?: Prisma.TransactionClient,
-  ) {
+  ): Promise<BoreholeCoordinate> {
     const { version, ...data } = coordinateInput(body);
     return this.db.run(
       c,
@@ -137,14 +115,10 @@ export class FilesService implements OnApplicationShutdown {
       transaction,
     );
   }
-  official(c: TenantContext, workId: string, boreholeId: string, body: unknown) {
+  official(c: TenantContext, workId: string, boreholeId: string, body: unknown): Promise<Borehole> {
     const v = technicalInput(body, ['coordinateId', 'technicalVersion']);
     const version = expectedVersion(v.technicalVersion);
-    if (
-      typeof v.coordinateId !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.coordinateId)
-    )
-      throw new BadRequestException('Coordinate required');
+    if (!isUuid(v.coordinateId)) throw new BadRequestException('Coordinate required');
     return this.db.run(c, async (tx) => {
       const hole = await this.technical.parent(tx, c, workId, boreholeId);
       await requireFieldWrite(tx, c, hole.reviewState, workId);
@@ -184,84 +158,17 @@ export class FilesService implements OnApplicationShutdown {
     file: Express.Multer.File | undefined,
     caption: unknown,
     purpose?: unknown,
-  ) {
+  ): Promise<PhotoReference> {
     await this.db.run(c, async (tx) => {
       const hole = await this.technical.visibleParent(tx, c, workId, boreholeId);
       await requireFieldWrite(tx, c, hole.reviewState, workId);
     });
-    const staged = await this.stagePhoto(c, workId, file, caption, purpose);
+    const staged = await this.staging.stage(c, workId, file, caption, purpose);
     try {
-      return await this.db.run(c, (tx) => this.commitPhoto(tx, c, workId, boreholeId, staged));
+      return await this.db.run(c, (tx) => this.staging.commit(tx, c, workId, boreholeId, staged));
     } catch (error) {
-      throw await this.abandonPhoto(staged, error);
+      throw await this.staging.abandon(staged, error);
     }
-  }
-  /** Validates the image and writes it under a new key. Call outside any transaction. */
-  async stagePhoto(
-    c: TenantContext,
-    workId: string,
-    file: Express.Multer.File | undefined,
-    caption: unknown,
-    purpose?: unknown,
-  ): Promise<StagedPhoto> {
-    const label = optionalText(caption, 500);
-    const category = photoPurpose(purpose);
-    if (!file || file.size < 1 || file.size > 8 * 1024 * 1024)
-      throw new BadRequestException('Photo size limit is 8 MB');
-    const image = await inspectPhoto(file.buffer);
-    // Never derived from client input: a repeated ID must not overwrite a stored object.
-    const prefix = `${c.tenantId}/${workId}/photos/${randomUUID()}`;
-    const staged: StagedPhoto = {
-      ...image,
-      objectKey: `${prefix}/original`,
-      thumbnailKey: `${prefix}/preview.jpg`,
-      sha256: createHash('sha256').update(file.buffer).digest('hex'),
-      sizeBytes: file.size,
-      caption: label,
-      purpose: category,
-    };
-    const storage = privateStorage();
-    try {
-      await storage.put(staged.objectKey, file.buffer, staged.mime);
-    } catch (error) {
-      throw await this.abandonPhoto(staged, error);
-    }
-    return staged;
-  }
-  /** Removes only the objects of this staged photo and returns the error for the client. */
-  async abandonPhoto(staged: StagedPhoto, error?: unknown): Promise<unknown> {
-    const storage = privateStorage();
-    await Promise.allSettled([
-      storage.remove(staged.objectKey),
-      storage.remove(staged.thumbnailKey),
-    ]);
-    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
-      ? new ConflictException({
-          code: 'PHOTO_ID_CONFLICT',
-          message: 'Photo identifier already used',
-        })
-      : error;
-  }
-  async commitPhoto(
-    tx: Prisma.TransactionClient,
-    c: TenantContext,
-    workId: string,
-    boreholeId: string,
-    staged: StagedPhoto,
-    id?: string,
-  ): Promise<{ id: string; version: number }> {
-    const hole = await this.technical.parent(tx, c, workId, boreholeId);
-    await requireFieldWrite(tx, c, hole.reviewState, workId);
-    if (
-      (await tx.boreholePhoto.count({
-        where: { tenantId: c.tenantId, workId, boreholeId, deletedAt: null },
-      })) >= 100
-    )
-      throw new BadRequestException('Photo limit reached');
-    const saved = await tx.boreholePhoto.create({
-      data: { ...(id ? { id } : {}), tenantId: c.tenantId, workId, boreholeId, ...staged },
-    });
-    return { id: saved.id, version: saved.version };
   }
   updatePhoto(
     c: TenantContext,
@@ -270,7 +177,7 @@ export class FilesService implements OnApplicationShutdown {
     id: string,
     body: unknown,
     deleted = false,
-  ) {
+  ): Promise<PhotoReference> {
     const v = technicalInput(
       body,
       deleted ? ['version'] : ['version', 'caption', 'crop', 'purpose'],
@@ -323,7 +230,7 @@ export class FilesService implements OnApplicationShutdown {
     boreholeId: string,
     id: string,
     preview: boolean,
-  ) {
+  ): Promise<{ body: Buffer; mime: string }> {
     const photo = await this.db.run(c, async (tx) => {
       await this.technical.visibleParent(tx, c, workId, boreholeId);
       return tx.boreholePhoto.findFirst({
@@ -340,40 +247,4 @@ export class FilesService implements OnApplicationShutdown {
       mime: preview ? 'image/jpeg' : photo.mime,
     };
   }
-}
-
-async function inspectPhoto(
-  buffer: Buffer,
-): Promise<{ mime: string; width: number; height: number }> {
-  try {
-    const meta = await sharp(buffer, { limitInputPixels: 25000000, failOn: 'warning' })
-      .timeout({ seconds: 5 })
-      .metadata();
-    if (
-      !['jpeg', 'png'].includes(meta.format ?? '') ||
-      !meta.width ||
-      !meta.height ||
-      (meta.pages && meta.pages > 1)
-    )
-      throw Error();
-    return {
-      mime: meta.format === 'jpeg' ? 'image/jpeg' : 'image/png',
-      width: meta.width,
-      height: meta.height,
-    };
-  } catch {
-    throw new BadRequestException(
-      'Photo must be a valid single-frame JPEG or PNG, at most 25 megapixels',
-    );
-  }
-}
-
-function photoPurpose(value: unknown) {
-  if (value === undefined || value === null || value === '') return 'OTHER';
-  if (
-    typeof value !== 'string' ||
-    !['SITE', 'EXECUTION', 'SAMPLE_1', 'SAMPLE_2', 'OTHER'].includes(value)
-  )
-    throw new BadRequestException('Invalid photo purpose');
-  return value;
 }

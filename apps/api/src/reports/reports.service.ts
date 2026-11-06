@@ -1,6 +1,3 @@
-import { reportCompany } from './report-identity';
-import { reportSoilDescription } from './report-soil-description';
-import { SOIL_STATE_RULE_VERSION } from '@spt/geotechnical-engine';
 import {
   BadRequestException,
   ConflictException,
@@ -9,38 +6,32 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { validateReportEligibility } from './report-eligibility';
 import { googleMapReference, inpeMapBackground } from '@spt/map-reference';
-import { Prisma } from '@prisma/client';
+import { Prisma, Report } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import { parseMapView, reportMap, MapView } from './report-map';
+import { compositionJson, readComposition } from './report-composition';
+import { issueSnapshot } from './report-issue-snapshot';
+import { parseMapView, reportMap } from './report-map';
 import {
-  ReportSnapshot,
-  TEMPLATE_VERSION,
-  canonicalJson,
-  technicalMap,
-} from '@spt/report-templates';
+  IssuedPdf,
+  ReportHistoryRows,
+  ReportIssueRow,
+  ReportMapPreviewRows,
+  ReportOptionsRows,
+  issueSelect,
+  reportBoreholeSelect,
+} from './report-rows';
+import { canonicalJson, technicalMap } from '@spt/report-templates';
+import { isUuid } from '../common/uuid';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
 import { lockWork, readWork } from '../works/work-lock';
 import { privateStorage } from '../files/shared-storage';
 import { expectedVersion, technicalInput, text } from '../technical/technical-input';
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
-export const issueSelect = {
-  id: true,
-  reportId: true,
-  state: true,
-  issueNumber: true,
-  compositionVersion: true,
-  pdfSha256: true,
-  errorCode: true,
-  createdAt: true,
-  finishedAt: true,
-} as const;
 @Injectable()
 export class ReportsService {
   constructor(@Inject(TenantDatabaseService) private readonly db: TenantDatabaseService) {}
-  list(c: TenantContext, workId: string) {
+  list(c: TenantContext, workId: string): Promise<Report[]> {
     return this.db.run(c, async (tx) => {
       await readWork(tx, c, workId);
       return tx.report.findMany({
@@ -50,7 +41,7 @@ export class ReportsService {
       });
     });
   }
-  options(c: TenantContext, workId: string, page: number) {
+  options(c: TenantContext, workId: string, page: number): Promise<ReportOptionsRows> {
     return this.db.run(c, async (tx) => {
       await readWork(tx, c, workId);
       const where = { tenantId: c.tenantId, workId, deletedAt: null };
@@ -60,14 +51,7 @@ export class ReportsService {
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           take: 20,
           skip: (page - 1) * 20,
-          select: {
-            id: true,
-            code: true,
-            photos: {
-              where: { deletedAt: null, processingState: 'READY' },
-              select: { id: true, caption: true },
-            },
-          },
+          select: reportBoreholeSelect,
         }),
         total: await tx.borehole.count({ where }),
         page,
@@ -75,7 +59,12 @@ export class ReportsService {
       };
     });
   }
-  private async parent(tx: Prisma.TransactionClient, c: TenantContext, workId: string, id: string) {
+  private async parent(
+    tx: Prisma.TransactionClient,
+    c: TenantContext,
+    workId: string,
+    id: string,
+  ): Promise<Report> {
     await lockWork(tx, c, workId);
     const report = await tx.report.findFirst({ where: { id, workId, tenantId: c.tenantId } });
     if (!report) throw new NotFoundException('Report unavailable');
@@ -86,24 +75,24 @@ export class ReportsService {
     c: TenantContext,
     workId: string,
     id: string,
-  ) {
+  ): Promise<Report> {
     await readWork(tx, c, workId);
     const report = await tx.report.findFirst({ where: { id, workId, tenantId: c.tenantId } });
     if (!report) throw new NotFoundException('Report unavailable');
     return report;
   }
-  private ids(value: unknown, max: number, required = false) {
+  private ids(value: unknown, max: number, required = false): string[] {
     if (
       !Array.isArray(value) ||
       value.length > max ||
       (required && !value.length) ||
-      value.some((v) => typeof v !== 'string' || !uuid.test(v)) ||
+      value.some((v) => !isUuid(v)) ||
       new Set(value).size !== value.length
     )
       throw new BadRequestException('Invalid selected records');
     return value as string[];
   }
-  save(c: TenantContext, workId: string, body: unknown, id?: string) {
+  save(c: TenantContext, workId: string, body: unknown, id?: string): Promise<Report> {
     const v = technicalInput(body, [
         'title',
         'notes',
@@ -116,7 +105,8 @@ export class ReportsService {
       notes = v.notes === '' ? '' : text(v.notes, 4000),
       holeIds = this.ids(v.holeIds, 20, true),
       photoIds = this.ids(v.photoIds, 40);
-    if (typeof v.showOtherBoreholes !== 'boolean')
+    const showOtherBoreholes = v.showOtherBoreholes;
+    if (typeof showOtherBoreholes !== 'boolean')
       throw new BadRequestException('Map option required');
     const version = id ? expectedVersion(v.version) : undefined;
     return this.db.run(c, async (tx) => {
@@ -140,8 +130,7 @@ export class ReportsService {
       )
         throw new NotFoundException('Selected photo unavailable');
       const existing = id ? await this.parent(tx, c, workId, id) : null;
-      const previousComposition = existing?.composition as
-        { holeIds: string[]; mapView?: MapView } | undefined;
+      const previousComposition = existing ? readComposition(existing.composition) : undefined;
       const mapView =
         previousComposition && canonicalJson(previousComposition.holeIds) === canonicalJson(holeIds)
           ? previousComposition.mapView
@@ -149,12 +138,12 @@ export class ReportsService {
       const data = {
         title,
         notes,
-        composition: {
+        composition: compositionJson({
           holeIds,
           photoIds,
-          showOtherBoreholes: v.showOtherBoreholes,
+          showOtherBoreholes,
           ...(mapView ? { mapView } : {}),
-        } as Prisma.InputJsonObject,
+        }),
       };
       if (!id) {
         if ((await tx.report.count({ where })) >= 100)
@@ -172,7 +161,7 @@ export class ReportsService {
       return tx.report.findUniqueOrThrow({ where: { id } });
     });
   }
-  history(c: TenantContext, workId: string, id: string) {
+  history(c: TenantContext, workId: string, id: string): Promise<ReportHistoryRows> {
     return this.db.run(c, async (tx) => {
       const report = await this.visibleReport(tx, c, workId, id);
       return {
@@ -181,17 +170,10 @@ export class ReportsService {
           where: {
             tenantId: c.tenantId,
             workId,
-            id: { in: (report.composition as { holeIds: string[] }).holeIds },
+            id: { in: readComposition(report.composition).holeIds },
             deletedAt: null,
           },
-          select: {
-            id: true,
-            code: true,
-            photos: {
-              where: { deletedAt: null, processingState: 'READY' },
-              select: { id: true, caption: true },
-            },
-          },
+          select: reportBoreholeSelect,
         }),
         issues: await tx.reportIssue.findMany({
           where: { tenantId: c.tenantId, workId, reportId: id },
@@ -202,11 +184,10 @@ export class ReportsService {
       };
     });
   }
-  issue(c: TenantContext, workId: string, id: string, body: unknown) {
+  issue(c: TenantContext, workId: string, id: string, body: unknown): Promise<ReportIssueRow> {
     const v = technicalInput(body, ['version', 'idempotencyKey']),
       version = expectedVersion(v.version);
-    if (typeof v.idempotencyKey !== 'string' || !uuid.test(v.idempotencyKey))
-      throw new BadRequestException('Idempotency key must be UUID');
+    if (!isUuid(v.idempotencyKey)) throw new BadRequestException('Idempotency key must be UUID');
     const idempotencyKey = v.idempotencyKey,
       requestHash = hash(JSON.stringify({ version }));
     return this.db.run(c, async (tx) => {
@@ -235,99 +216,14 @@ export class ReportsService {
         })) >= 50
       )
         throw new ConflictException({ code: 'QUEUE_LIMIT', message: 'Too many pending jobs' });
-      const composition = report.composition as {
-        holeIds: string[];
-        photoIds: string[];
-        showOtherBoreholes: boolean;
-      };
-      const holes = await tx.borehole.findMany({
-        where: { tenantId: c.tenantId, workId, id: { in: composition.holeIds }, deletedAt: null },
-        include: {
-          sptTests: { orderBy: { depthM: 'asc' } },
-          soilLayers: { orderBy: { fromM: 'asc' } },
-          coordinates: true,
-        },
-      });
-      validateReportEligibility(holes, composition.holeIds.length);
-      if (holes.reduce((n, h) => n + h.sptTests.length + h.soilLayers.length, 0) > 1000)
-        throw new BadRequestException('Report size limit exceeded');
-      const photoRecords = await tx.boreholePhoto.findMany({
-        where: {
-          tenantId: c.tenantId,
-          workId,
-          id: { in: composition.photoIds },
-          processingState: 'READY',
-          boreholeId: { in: composition.holeIds },
-          deletedAt: null,
-        },
-      });
-      if (photoRecords.length !== composition.photoIds.length)
-        throw new NotFoundException('Selected photos unavailable');
-      const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: c.tenantId } }),
-        work = await tx.work.findUniqueOrThrow({ where: { id: workId } });
-      const ordered = composition.holeIds.map((id) => holes.find((h) => h.id === id)!);
-      const map = (await reportMap(
+      const snapshot = await issueSnapshot(
         tx,
         c,
         workId,
-        composition.holeIds,
-        composition.showOtherBoreholes,
-        (composition as typeof composition & { mapView?: MapView }).mapView,
-      ))!;
-      const snapshot: ReportSnapshot = {
-        schemaVersion: 1,
-        soilStateRuleVersion: SOIL_STATE_RULE_VERSION,
-        templateVersion: TEMPLATE_VERSION,
-        createdAt: new Date().toISOString(),
-        issueNumber: report.issueCounter + 1,
-        tenant: reportCompany(tenant),
-        work: {
-          id: work.id,
-          name: work.name,
-          clientName: work.clientName,
-          city: work.city,
-          state: work.state,
-          address: work.address,
-        },
-        report: { id, title: report.title, notes: report.notes, version },
-        holes: ordered.map((h) => ({
-          id: h.id,
-          code: h.code,
-          technicalVersion: h.technicalVersion,
-          executedDepthM: String(h.executedDepthM),
-          waterLevelM: h.waterLevelM === null ? null : String(h.waterLevelM),
-          fieldDate: h.fieldDate!.toISOString(),
-          reviewerName: h.reviewerName!,
-          reviewerRegistration: h.reviewerRegistration!,
-          reviewedAt: h.reviewedAt!.toISOString(),
-          reviewNote: h.reviewNote,
-          officialCoordinate: JSON.parse(
-            JSON.stringify(h.coordinates.find((c) => c.id === h.officialCoordinateId)),
-          ),
-          tests: JSON.parse(JSON.stringify(h.sptTests)),
-          layers: JSON.parse(
-            JSON.stringify(
-              h.soilLayers.map((layer) => ({
-                ...layer,
-                description: reportSoilDescription(layer),
-              })),
-            ),
-          ),
-        })),
-        photos: composition.photoIds.map((id) => {
-          const p = photoRecords.find((v) => v.id === id)!;
-          return {
-            id: p.id,
-            boreholeId: p.boreholeId,
-            caption: p.caption,
-            objectKey: p.objectKey,
-            sha256: p.sha256,
-            version: p.version,
-            crop: p.crop as ReportSnapshot['photos'][number]['crop'],
-          };
-        }),
-        map,
-      };
+        report,
+        readComposition(report.composition),
+        version,
+      );
       const frozen = JSON.stringify(snapshot);
       const issue = await tx.reportIssue.create({
         data: {
@@ -346,14 +242,10 @@ export class ReportsService {
       return issue;
     });
   }
-  async map(c: TenantContext, workId: string, id: string) {
+  async map(c: TenantContext, workId: string, id: string): Promise<ReportMapPreviewRows> {
     const result = await this.db.run(c, async (tx) => {
       const report = await this.visibleReport(tx, c, workId, id),
-        composition = report.composition as {
-          holeIds: string[];
-          showOtherBoreholes: boolean;
-          mapView?: MapView;
-        };
+        composition = readComposition(report.composition);
       const map = await reportMap(
         tx,
         c,
@@ -384,7 +276,7 @@ export class ReportsService {
     };
   }
 
-  saveMap(c: TenantContext, workId: string, id: string, body: unknown) {
+  saveMap(c: TenantContext, workId: string, id: string, body: unknown): Promise<Report> {
     const v = technicalInput(body, ['version', 'view']),
       version = expectedVersion(v.version),
       view = parseMapView(v.view);
@@ -392,28 +284,29 @@ export class ReportsService {
       const report = await this.parent(tx, c, workId, id);
       if (report.version !== version)
         throw new ConflictException({ code: 'RECORD_VERSION_CONFLICT', message: 'Report changed' });
-      const composition = report.composition as {
-        holeIds: string[];
-        photoIds: string[];
-        showOtherBoreholes: boolean;
-        mapView?: MapView;
-      };
-      await reportMap(tx, c, workId, composition.holeIds, composition.showOtherBoreholes, view);
-      const updated = { ...composition } as typeof composition & { mapBase?: unknown };
-      delete updated.mapBase;
-      if (view) updated.mapView = view;
-      else delete updated.mapView;
+      const { holeIds, photoIds, showOtherBoreholes } = readComposition(report.composition);
+      await reportMap(tx, c, workId, holeIds, showOtherBoreholes, view);
       return tx.report.update({
         where: { id },
         data: {
-          composition: updated as unknown as Prisma.InputJsonObject,
+          composition: compositionJson({
+            holeIds,
+            photoIds,
+            showOtherBoreholes,
+            ...(view ? { mapView: view } : {}),
+          }),
           version: { increment: 1 },
           currentIssueId: null,
         },
       });
     });
   }
-  async download(c: TenantContext, workId: string, id: string, issueId: string) {
+  async download(
+    c: TenantContext,
+    workId: string,
+    id: string,
+    issueId: string,
+  ): Promise<IssuedPdf> {
     const issue = await this.db.run(c, async (tx) => {
       await this.visibleReport(tx, c, workId, id);
       return tx.reportIssue.findFirst({

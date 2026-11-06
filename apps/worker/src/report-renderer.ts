@@ -12,7 +12,7 @@ export async function renderReportPdf(
   snapshot: ReportSnapshot,
   photos: Record<string, string>,
   options: ReportRenderOptions = {},
-) {
+): Promise<{ pdf: Buffer; browserVersion: string }> {
   const browser = await chromium.launch({
     channel: options.channel ?? process.env.PDF_BROWSER_CHANNEL,
     headless: true,

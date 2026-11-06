@@ -11,7 +11,8 @@ import { Prisma } from '@prisma/client';
 import { TenantContext, TenantDatabaseService } from '../database/tenant-database.service';
 import { lockWork, readWork } from '../works/work-lock';
 import { metreInterval, saveMetreSoil } from './spt-soil';
-import { parseSpt } from './spt-input';
+import { SptInput } from './spt-input';
+import { SptMetreRows } from '../technical/technical-rows';
 @Injectable()
 export class SptService {
   constructor(@Inject(TenantDatabaseService) private readonly db: TenantDatabaseService) {}
@@ -102,10 +103,10 @@ export class SptService {
     context: TenantContext,
     workId: string,
     boreholeId: string,
-    input: ReturnType<typeof parseSpt>,
+    input: SptInput,
     id?: string,
     transaction?: Prisma.TransactionClient,
-  ) {
+  ): Promise<SptMetreRows> {
     try {
       return await this.db.run(
         context,

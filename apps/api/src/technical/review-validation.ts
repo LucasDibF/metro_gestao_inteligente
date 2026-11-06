@@ -27,7 +27,7 @@ export function validateReviewData(
   hole: { fieldDate: unknown; executedDepthM: Depth },
   tests: Array<{ depthM: Depth; advances: unknown; result: unknown }>,
   layerCount: number,
-) {
+): void {
   const fail = (code: string, depths?: string[]) => {
     throw new BadRequestException({ code, message: code, ...(depths ? { depths } : {}) });
   };

@@ -18,7 +18,7 @@ const hash = (value: string | Buffer) => createHash('sha256').update(value).dige
 export async function processNextReport(
   db: PrismaClient,
   options: { channel?: string; capturePath?: string; onlyJobId?: string } = {},
-) {
+): Promise<boolean> {
   const [row] = await db.$queryRaw<
     Array<{ job: Job | null }>
   >`SELECT claim_report_job(${options.onlyJobId ?? null}::uuid) AS job`;
@@ -106,7 +106,7 @@ export async function processNextReport(
     );
   } catch (error) {
     permanent ||= error instanceof PermanentReportError;
-    await db.$queryRaw`SELECT fail_report_job(${job.id}::uuid,${job.leaseToken}::uuid,${permanent})`;
+    // Logged first so the failure stays visible even when recording it in the database fails.
     console.error(
       JSON.stringify({
         event: 'report_job_failed',
@@ -118,6 +118,7 @@ export async function processNextReport(
         durationMs: Date.now() - started,
       }),
     );
+    await db.$queryRaw`SELECT fail_report_job(${job.id}::uuid,${job.leaseToken}::uuid,${permanent})`;
   } finally {
     if (heartbeat) clearInterval(heartbeat);
     storage?.close();

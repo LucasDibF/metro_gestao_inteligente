@@ -36,9 +36,14 @@ Umidade não é acrescentada automaticamente à descrição do PDF. Recuperaçã
 | `lib/field/photo_recovery.dart` | Arquivos duráveis e recuperação de câmera Android |
 | `lib/field/hole_screen.dart` | Estado e navegação do furo; `hole_*_tab.dart` são as quatro seções, `hole_section_nav.dart` a barra ou trilho, `hole_status_strip.dart` o estado de sincronização |
 | `lib/field/field_export.dart` | Cópia assistida dos dados pendentes |
-| `lib/ui/metro_theme.dart` | Paleta clara e escura, fontes, animações, espaçamentos, raios, alvos de toque e tema |
+| `lib/ui/metro_theme.dart` | Espaçamentos, raios, alvos de toque e tema; reexporta paleta, tempos e fontes |
+| `lib/ui/metro_palette.dart` | Paleta clara e escura e `context.metro` |
+| `lib/ui/metro_motion.dart` | Tempos e curvas das animações (`MetroMotion`) |
+| `lib/ui/metro_fonts.dart` | Famílias de fonte e estilo dos números |
+| `lib/ui/metro_animations.dart` | Entrada em cascata, toque com mola, ícone girando e troca de tela |
 | `lib/ui/metro_layout.dart` | Larguras de conteúdo, colunas adaptativas e ação principal fixa |
-| `lib/ui/metro_widgets.dart` | Avisos, estados vazios e de falha, linhas, painéis e campos com rótulo |
+| `lib/ui/metro_widgets.dart` | Avisos, estados vazios e de falha, linhas e painéis; reexporta animações e campos |
+| `lib/ui/metro_fields.dart` | Campos com rótulo, erro junto à ação e fatos rótulo-valor |
 
 São usados componentes Flutter e ChangeNotifier. Sem infraestrutura adicional de estado ou um segundo motor técnico em Dart.
 
@@ -54,9 +59,9 @@ Cores, fontes e tamanhos vêm do tema; as telas não repetem valores. Botão pri
 
 A aparência segue o web. Títulos usam Fraunces 600 e texto e controles IBM Plex Sans, embutidas em `assets/fonts` (instâncias estáticas do Google Fonts, SIL OFL 1.1). O login usa a marca do web, convertida de SVG para PNG em `assets/brand`.
 
-As cores vêm dos tokens de `apps/web/src/styles/theme.css` e `brand.css`, em `MetroPalette` (`lib/ui/metro_theme.dart`), com tema claro e escuro conforme o aparelho. No claro, texto secundário, borda de campo e aviso positivo ficam mais escuros que no web, para manter 4,5:1 (3:1 na borda) sob sol, e o texto de erro escurece até 7:1 sobre o fundo de erro; no escuro, texto e ícones da marca usam o lilás claro do web. As telas leem as cores por `context.metro`, nunca por valores fixos.
+As cores vêm dos tokens de `apps/web/src/styles/theme.css` e `brand.css`, em `MetroPalette` (`lib/ui/metro_palette.dart`), com tema claro e escuro conforme o aparelho. No claro, texto secundário, borda de campo e aviso positivo ficam mais escuros que no web, para manter 4,5:1 (3:1 na borda) sob sol, e o texto de erro escurece até 7:1 sobre o fundo de erro; no escuro, texto e ícones da marca usam o lilás claro do web. As telas leem as cores por `context.metro`, nunca por valores fixos.
 
-As animações têm o ritmo do web (`MetroMotion`): troca de cor em 150 ms, recolhimento em 200 ms, entrada em 300 ms com a curva `cubic-bezier(0.16, 1, 0.3, 1)` e saída em 200 ms. Telas entram deslizando com fade, avisos surgem com fade e leve subida, e o estado de sincronização troca com transição. O toque muda a cor, sem ondulação. Com redução de movimento ativada no sistema, nada é animado.
+As animações têm o ritmo do web (`MetroMotion`): troca de cor em 150 ms, recolhimento em 200 ms, entrada em 300 ms com a curva `cubic-bezier(0.16, 1, 0.3, 1)` e saída em 200 ms. Itens de lista entram em cascata, 45 ms um após o outro até o oitavo. Um painel tocado encolhe em 90 ms e volta com leve mola em 420 ms. O ícone de sincronização dá uma volta por segundo enquanto trabalha. Telas entram deslizando com fade, avisos surgem com fade e leve subida, e o estado de sincronização troca com transição. O toque muda a cor, sem ondulação. Com redução de movimento ativada no sistema, nada é animado.
 
 ## Persistência e sincronização
 
@@ -64,7 +69,7 @@ O primeiro acesso e o primeiro download são online. O cache é identificado por
 
 Cada salvamento confirmado grava documento e operação na mesma transação SQLite. Os textos de um metro ainda não confirmado também são guardados como rascunho. A fila mantém UUID, conteúdo preparado, versão de origem e ordem. Uma operação preparada não é alterada ao repetir o envio.
 
-A API registra o recibo de uma operação junto com a alteração na mesma transação PostgreSQL. Se uma resposta se perder, o aplicativo consulta o recibo antes de reenviar. Operações repetidas com conteúdo diferente são recusadas. A versão atual é conferida no cliente e novamente sob o bloqueio do furo no servidor.
+A API registra o recibo de uma operação junto com a alteração na mesma transação PostgreSQL. Se uma resposta se perder, o aplicativo consulta o recibo antes de reenviar. Operações repetidas com conteúdo diferente são recusadas. A versão atual é conferida no cliente uma vez por sincronização, pelo snapshot; as operações seguintes usam a versão e o estado de revisão do recibo anterior. O servidor confere de novo sob o bloqueio do furo, e a recusa por versão (409) vira conflito, com a cópia local preservada. Enviar o furo para análise não muda a versão: se o web o enviar no meio da fila, a recusa por execução bloqueada (403) é conferida no snapshot e também vira conflito; sem essa mudança de estado, continua como erro de acesso.
 
 Uma recusa definitiva da API (400 ou 422) não trava a fila: a operação fica marcada como recusada, o motivo aparece na seção correspondente e as demais seguem. Salvar de novo o mesmo item substitui a recusa na mesma transação; fotografia recusada, ou cujo arquivo sumiu, pode ser removida. Um envio para análise recusado sai da fila, e com um envio pendente o furo não aceita edição. Rascunhos de metro sobrevivem ao download e podem ser descartados no editor. O caminho das fotografias é gravado relativo à pasta do aplicativo, porque a absoluta muda em atualizações do iOS. Ao abrir um furo baixado, sem pendências e online, o aplicativo atualiza a cópia em segundo plano.
 

@@ -1,8 +1,39 @@
 import { BadRequestException } from '@nestjs/common';
-import { evaluateSpt } from '@spt/geotechnical-engine';
+import { evaluateSpt, type SptResult } from '@spt/geotechnical-engine';
 import { expectedVersion, technicalInput, text, optionalText } from '../technical/technical-input';
 import { object } from '../auth/auth-input';
-export function parseSpt(body: unknown, editing: boolean) {
+type EvaluatedSpt = Exclude<SptResult, { status: 'INVALID' }>;
+/** The first metre records soil only; it carries no SPT reading. */
+type InitialSoilResult = Omit<
+  EvaluatedSpt,
+  'status' | 'reason' | 'nSpt' | 'advances' | 'interruptionReason' | 'totalPenetrationMm'
+> & {
+  status: 'NOT_TESTED';
+  reason: string;
+  nSpt: null;
+  advances: never[];
+  interruptionReason: null;
+  totalPenetrationMm: number;
+};
+export interface MetreSoilInput {
+  soilType: string;
+  description: string;
+  soilColor?: string | null;
+  soilMoisture?: string | null;
+}
+/** A validated SPT metre, with its evaluated result. */
+export interface SptInput {
+  fieldDetails: { executionMethod: string | null } | undefined;
+  soil: MetreSoilInput | undefined;
+  technicalVersion: number | undefined;
+  depthM: string;
+  advances: Array<{ blows: number; penetrationMm: number }>;
+  interruptionReason: string | null;
+  result: EvaluatedSpt | InitialSoilResult;
+  engineVersion: EvaluatedSpt['engineVersion'];
+  version: number | undefined;
+}
+export function parseSpt(body: unknown, editing: boolean): SptInput {
   const input = object(body);
   const allowed = new Set([
     'depthM',
@@ -48,14 +79,7 @@ export function parseSpt(body: unknown, editing: boolean) {
         totalPenetrationMm: 0,
       }
     : evaluated;
-  let soil:
-    | {
-        soilType: string;
-        description: string;
-        soilColor?: string | null;
-        soilMoisture?: string | null;
-      }
-    | undefined;
+  let soil: MetreSoilInput | undefined;
   if (input.soil !== undefined) {
     const value = technicalInput(input.soil, [
       'soilType',
@@ -106,7 +130,7 @@ export function parseSpt(body: unknown, editing: boolean) {
   };
 }
 
-function choice(value: unknown, allowed: string[]) {
+function choice(value: unknown, allowed: string[]): string | null {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value !== 'string' || !allowed.includes(value))
     throw new BadRequestException('Invalid field option');

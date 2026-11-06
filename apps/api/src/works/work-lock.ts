@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, Work } from '@prisma/client';
 import { TenantContext } from '../database/tenant-database.service';
 /** Visibility check for read paths: RLS and the tenant filter apply, no row lock is taken. */
 export async function readWork(
@@ -7,7 +7,7 @@ export async function readWork(
   context: TenantContext,
   workId: string,
   includeDeleted = false,
-) {
+): Promise<Work> {
   const work = await tx.work.findFirst({
     where: {
       id: workId,
@@ -24,7 +24,7 @@ export async function lockWork(
   context: TenantContext,
   workId: string,
   includeDeleted = false,
-) {
+): Promise<Work> {
   await tx.$queryRaw`SELECT id FROM works WHERE id=${workId}::uuid AND tenant_id=${context.tenantId}::uuid FOR UPDATE`;
   return readWork(tx, context, workId, includeDeleted);
 }

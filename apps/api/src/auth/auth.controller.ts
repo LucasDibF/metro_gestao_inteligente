@@ -10,6 +10,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { isUuid } from '../common/uuid';
 import { AuthService } from './auth.service';
 import { AuthRequest, Public } from './auth.guard';
 import { TenantDatabaseService } from '../database/tenant-database.service';
@@ -33,10 +34,7 @@ export class AuthController {
     const email = text(input.email, 254);
     const password = text(input.password, 1024);
     const tenantId = text(input.tenantId, 36).toLowerCase();
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(tenantId) ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-    )
+    if (!isUuid(tenantId) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       throw new BadRequestException('Invalid request');
     const mfaCode = input.mfaCode === undefined ? undefined : text(input.mfaCode, 32);
     return this.auth.login(email, password, tenantId, mfaCode);

@@ -1,3 +1,4 @@
+import type { FieldChecklistItem } from '@spt/api-contracts';
 import { missingMetres } from './review-validation';
 import { testEndDepth } from '@spt/geotechnical-engine';
 type Depth = { toString(): string } | string | number | null;
@@ -13,7 +14,7 @@ export function fieldChecklist(
   tests: Array<{ depthM: Depth; advances: unknown; result: unknown }>,
   layers: Array<{ fromM: Depth; toM: Depth }>,
   readyPhotos: number,
-) {
+): FieldChecklistItem[] {
   let end = 0,
     coverage = layers.length > 0;
   for (const layer of layers) {

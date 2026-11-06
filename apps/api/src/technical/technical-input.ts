@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { object } from '../auth/auth-input';
-export function technicalInput(body: unknown, fields: string[]) {
+export function technicalInput(body: unknown, fields: string[]): Record<string, unknown> {
   const value = object(body);
   if (Object.keys(value).some((key) => !fields.includes(key)))
     throw new BadRequestException('Unknown technical field');

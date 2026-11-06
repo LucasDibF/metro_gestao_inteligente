@@ -24,7 +24,7 @@ class FieldSession extends OperatorSession {
   }
   @override
   bool get offlineReadAllowed => true;
-  int version = 1, writes = 0;
+  int version = 1, writes = 0, snapshots = 0;
   bool disconnected = false, loseResponse = false, denied = false;
   String review = 'DRAFT';
   final receipts = <String, Json>{};
@@ -53,6 +53,7 @@ class FieldSession extends OperatorSession {
     if (route.contains('/operacoes/')) {
       return {'receipt': receipts[route.split('/').last]};
     }
+    snapshots++;
     return snapshot();
   }
 
@@ -68,7 +69,7 @@ class FieldSession extends OperatorSession {
     final id = body!['operationId'] as String;
     if (receipts.containsKey(id)) return receipts[id]!;
     if (body['expectedTechnicalVersion'] != version) {
-      throw const ApiFailure(409, 'Conflito');
+      throw const ApiFailure(409, 'Conflito', code: 'RECORD_VERSION_CONFLICT');
     }
     writes++;
     version++;

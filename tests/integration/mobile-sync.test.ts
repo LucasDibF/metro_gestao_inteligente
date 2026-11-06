@@ -99,14 +99,38 @@ test('mobile sync is atomic, idempotent, versioned and assignment-only; partial 
     assert.equal(await db.sptTest.count({ where: { boreholeId: hole.id } }), 1);
     const lookup = await (await call(route + '/operacoes/' + initial.operationId)).json();
     assert.deepEqual(lookup.receipt, first);
+    const operationsBeforeReuse = await db.$queryRaw<
+      Array<{ count: bigint }>
+    >`SELECT count(*) FROM mobile_operations WHERE tenant_id=${tenant.id}::uuid`;
+    const reusedWithOtherPayload = await call(route + '/operacoes', {
+      ...initial,
+      payload: { ...initial.payload, soil: { soilType: 'Areia' } },
+    });
+    assert.equal(reusedWithOtherPayload.status, 409);
     assert.equal(
-      (
-        await call(route + '/operacoes', {
-          ...initial,
-          payload: { ...initial.payload, soil: { soilType: 'Areia' } },
-        })
-      ).status,
-      409,
+      ((await reusedWithOtherPayload.json()) as { code: string }).code,
+      'OPERATION_REUSED',
+    );
+    const reusedWithOtherKind = await call(route + '/operacoes', {
+      operationId: initial.operationId,
+      kind: 'FIELDS',
+      expectedTechnicalVersion: first.technicalVersion,
+      payload: { technicalVersion: first.technicalVersion, fieldDate: '2026-11-04' },
+    });
+    assert.equal(reusedWithOtherKind.status, 409);
+    assert.equal(((await reusedWithOtherKind.json()) as { code: string }).code, 'OPERATION_REUSED');
+    const operationsAfterReuse = await db.$queryRaw<
+      Array<{ count: bigint }>
+    >`SELECT count(*) FROM mobile_operations WHERE tenant_id=${tenant.id}::uuid`;
+    assert.equal(operationsAfterReuse[0].count, operationsBeforeReuse[0].count);
+    assert.equal(await db.sptTest.count({ where: { boreholeId: hole.id } }), 1);
+    const unchangedHole = await db.borehole.findUniqueOrThrow({ where: { id: hole.id } });
+    assert.equal(unchangedHole.technicalVersion, first.technicalVersion);
+    assert.equal(unchangedHole.fieldDate, null, 'a refused reuse must not apply its payload');
+    assert.deepEqual(
+      (await (await call(route + '/operacoes/' + initial.operationId)).json()).receipt,
+      first,
+      'the stored receipt keeps the original response',
     );
     version = first.technicalVersion;
     const stale = await call(route + '/operacoes', {
@@ -166,6 +190,59 @@ test('mobile sync is atomic, idempotent, versioned and assignment-only; partial 
     });
     assert.equal(fields.status, 201, await fields.clone().text());
     version = (await fields.json()).technicalVersion;
+    const coordinateOperation = {
+      operationId: randomUUID(),
+      kind: 'COORDINATE',
+      expectedTechnicalVersion: version,
+      payload: {
+        eastingM: '500000',
+        northingM: '7400000',
+        zone: 23,
+        hemisphere: 'S',
+        datum: 'SIRGAS2000',
+        altitudeM: '12.5',
+        reference: 'GPS de campo',
+      },
+    };
+    const coordinate = await call(route + '/operacoes', coordinateOperation);
+    assert.equal(coordinate.status, 201, await coordinate.clone().text());
+    const coordinateReceipt = (await coordinate.json()) as {
+      result: { id: string; kind: string; eastingM: string; version: number };
+      technicalVersion: number;
+      reviewState: string;
+    };
+    assert.equal(coordinateReceipt.result.kind, 'EXECUTED');
+    assert.equal(coordinateReceipt.result.version, 1);
+    assert.equal(coordinateReceipt.reviewState, 'DRAFT');
+    assert.equal(
+      coordinateReceipt.technicalVersion,
+      version,
+      'only an official coordinate changes the technical version',
+    );
+    const savedCoordinates = await db.boreholeCoordinate.findMany({
+      where: { boreholeId: hole.id },
+    });
+    assert.equal(savedCoordinates.length, 1);
+    assert.equal(savedCoordinates[0].id, coordinateReceipt.result.id);
+    assert.equal(savedCoordinates[0].kind, 'EXECUTED');
+    assert.equal(
+      await db.technicalEvent.count({
+        where: { boreholeId: hole.id, action: 'COORDINATE_UPDATED' },
+      }),
+      1,
+    );
+    const coordinateRetry = await call(route + '/operacoes', coordinateOperation);
+    assert.equal(coordinateRetry.status, 201);
+    assert.deepEqual(await coordinateRetry.json(), coordinateReceipt);
+    assert.equal(await db.boreholeCoordinate.count({ where: { boreholeId: hole.id } }), 1);
+    const invalidCoordinate = await call(route + '/operacoes', {
+      ...coordinateOperation,
+      operationId: randomUUID(),
+      expectedTechnicalVersion: coordinateReceipt.technicalVersion,
+      payload: { ...coordinateOperation.payload, zone: 61 },
+    });
+    assert.equal(invalidCoordinate.status, 400);
+    version = coordinateReceipt.technicalVersion;
     const photoId = randomUUID();
     const image = await sharp({
       create: { width: 24, height: 24, channels: 3, background: '#b68c64' },
@@ -241,6 +318,7 @@ test('mobile sync is atomic, idempotent, versioned and assignment-only; partial 
     await db.soilLayer.deleteMany({ where: { tenantId: tenant.id } });
     await db.sptTest.deleteMany({ where: { tenantId: tenant.id } });
     await db.boreholePhoto.deleteMany({ where: { tenantId: tenant.id } });
+    await db.boreholeCoordinate.deleteMany({ where: { tenantId: tenant.id } });
     await db.borehole.deleteMany({ where: { tenantId: tenant.id } });
     await db.workAssignment.deleteMany({ where: { tenantId: tenant.id } });
     await db.work.deleteMany({ where: { tenantId: tenant.id } });

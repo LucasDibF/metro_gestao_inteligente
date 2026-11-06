@@ -12,15 +12,40 @@ import 'field_execution_test.dart' show FieldSession;
 class RefusingSession extends FieldSession {
   final refusals = <String, ApiFailure>{};
   final uploads = <String>[];
+
+  /// Snapshots fetched so far, noted at every operation sent.
+  final snapshotsAtSend = <int>[];
+
+  /// After this many writes, an edit on the web moves the version.
+  int? webEditAfterWrites;
+
+  /// After this many writes, the hole is sent for review on the web, which
+  /// keeps its version.
+  int? webSubmitAfterWrites;
+
+  /// The profile lost field access: the API answers 403 while still in draft.
+  bool profileLocked = false;
+
+  static const _locked = ApiFailure(
+    403,
+    'A execução de campo está bloqueada ou indisponível para este perfil.',
+    code: 'FIELD_EXECUTION_LOCKED',
+  );
+
   @override
   Future<Json> request(
     String route, {
     String method = 'GET',
     Json? body,
   }) async {
+    snapshotsAtSend.add(snapshots);
     final refusal = refusals[body?['kind']];
     if (refusal != null) throw refusal;
-    return super.request(route, method: method, body: body);
+    if (profileLocked || review != 'DRAFT') throw _locked;
+    final receipt = await super.request(route, method: method, body: body);
+    if (writes == webEditAfterWrites) version++;
+    if (writes == webSubmitAfterWrites) review = 'IN_REVIEW';
+    return receipt;
   }
 
   @override
@@ -151,6 +176,97 @@ void main() {
       expect(await queue(), isEmpty);
     },
   );
+
+  test('one snapshot confirms the version for the whole queue', () async {
+    final doc = await repo.download('work', 'hole');
+    await repo.saveFields(doc, {'fieldDate': '2026-11-04'});
+    await repo.saveMetre(doc, metre('1'));
+    await repo.saveMetre(doc, metre('2'));
+    session.snapshots = 0;
+    await repo.sync('work', 'hole');
+    expect(session.snapshotsAtSend, [1, 1, 1]);
+    // The other snapshot refreshes the copy once the queue is empty.
+    expect(session.snapshots, 2);
+    expect(await queue(), isEmpty);
+  });
+
+  test('each operation expects the version of the receipt before it', () async {
+    final doc = await repo.download('work', 'hole');
+    await repo.saveFields(doc, {'fieldDate': '2026-11-04'});
+    await repo.saveMetre(doc, metre('1'));
+    await repo.saveMetre(doc, metre('2'));
+    await repo.sync('work', 'hole');
+    final receipts = session.sent
+        .map((sent) => session.receipts[sent['operationId']]!)
+        .toList();
+    expect(session.sent.first['expectedTechnicalVersion'], 1);
+    for (var index = 1; index < session.sent.length; index++) {
+      expect(
+        session.sent[index]['expectedTechnicalVersion'],
+        receipts[index - 1]['technicalVersion'],
+      );
+    }
+    expect(session.sent.last['expectedTechnicalVersion'], 3);
+  });
+
+  test(
+    'a web edit in the middle of the queue stops it as a conflict',
+    () async {
+      final doc = await repo.download('work', 'hole');
+      await repo.saveFields(doc, {'fieldDate': '2026-11-04'});
+      await repo.saveMetre(doc, metre('1'));
+      await repo.saveMetre(doc, metre('2'));
+      session.webEditAfterWrites = 1;
+      session.snapshots = 0;
+      await expectLater(
+        repo.sync('work', 'hole'),
+        throwsA(isA<FieldConflict>()),
+      );
+      expect(session.writes, 1);
+      expect(session.snapshotsAtSend, [1, 1]);
+      final left = await queue();
+      expect(left.map((o) => o['kind']), ['METRE', 'METRE']);
+      expect(left.where(isRejected), isEmpty);
+      final local = (await store.read(repo.owner, 'hole'))!;
+      expect(local['records']['2']['soil']['soilColor'], 'Marrom');
+    },
+  );
+
+  test(
+    'a hole sent for review on the web mid-queue stops it as a conflict',
+    () async {
+      final doc = await repo.download('work', 'hole');
+      await repo.saveFields(doc, {'fieldDate': '2026-11-04'});
+      await repo.saveMetre(doc, metre('1'));
+      await repo.saveMetre(doc, metre('2'));
+      session.webSubmitAfterWrites = 1;
+      await expectLater(
+        repo.sync('work', 'hole'),
+        throwsA(isA<FieldConflict>()),
+      );
+      expect(session.writes, 1);
+      final left = await queue();
+      expect(left.map((o) => o['kind']), ['METRE', 'METRE']);
+      expect(left.where(isRejected), isEmpty);
+      final local = (await store.read(repo.owner, 'hole'))!;
+      expect(local['records']['2']['soil']['soilColor'], 'Marrom');
+    },
+  );
+
+  test('a profile without field access is not taken for a conflict', () async {
+    final doc = await repo.download('work', 'hole');
+    await repo.saveFields(doc, {'fieldDate': '2026-11-04'});
+    session.profileLocked = true;
+    await expectLater(
+      repo.sync('work', 'hole'),
+      throwsA(
+        isA<ApiFailure>()
+            .having((e) => e.status, 'status', 403)
+            .having((e) => e.code, 'code', 'FIELD_EXECUTION_LOCKED'),
+      ),
+    );
+    expect((await queue()).single['status'], 'pending');
+  });
 
   test('a rejected photo can be removed, with its file', () async {
     final file = await File('${dir.path}/foto.jpg').writeAsBytes([1, 2, 3]);

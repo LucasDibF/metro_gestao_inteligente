@@ -1,7 +1,20 @@
 import { BadRequestException } from '@nestjs/common';
 import proj4 from 'proj4';
 import { technicalInput, text, expectedVersion } from '../technical/technical-input';
-export function coordinateInput(body: unknown) {
+/** A validated SIRGAS 2000 UTM coordinate and its geographic position. */
+export interface CoordinateInput {
+  eastingM: string;
+  northingM: string;
+  zone: number;
+  hemisphere: string;
+  datum: 'SIRGAS2000';
+  altitudeM: string | null;
+  reference: string;
+  latitude: number;
+  longitude: number;
+  version: number | undefined;
+}
+export function coordinateInput(body: unknown): CoordinateInput {
   const v = technicalInput(body, [
     'eastingM',
     'northingM',
@@ -65,7 +78,7 @@ export function photoDistance(
   official: { eastingM: unknown; northingM: unknown; zone: number; hemisphere: string },
   latitude: number,
   longitude: number,
-) {
+): number {
   const [east, north] = proj4(
     'EPSG:4326',
     `+proj=utm +zone=${official.zone} ${official.hemisphere === 'S' ? '+south' : ''} +ellps=GRS80 +towgs84=0,0,0 +units=m +no_defs`,
