@@ -29,21 +29,41 @@ class HoleStatusStrip extends StatelessWidget {
         : pending > 0
         ? (Icons.cloud_upload_outlined, '$pending registro(s) pendente(s)')
         : (Icons.check_circle_outline, 'Dados salvos no aparelho');
-    final status = Row(
-      spacing: MetroSpace.sm,
-      children: [
-        Icon(icon, size: MetroIconSize.inline, color: MetroColors.ink),
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.titleSmall),
+    final status = AnimatedSwitcher(
+      duration: MetroMotion.of(context, MetroMotion.collapse),
+      switchInCurve: MetroMotion.enterCurve,
+      switchOutCurve: MetroMotion.exitCurve,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          alignment: Alignment.centerLeft,
+          scale: Tween(begin: 0.92, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+          ),
+          child: child,
         ),
-      ],
+      ),
+      layoutBuilder: (current, previous) => Stack(
+        alignment: Alignment.centerLeft,
+        children: [...previous, ?current],
+      ),
+      child: Row(
+        key: ValueKey(label),
+        spacing: MetroSpace.sm,
+        children: [
+          Icon(icon, size: MetroIconSize.inline, color: context.metro.ink),
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.titleSmall),
+          ),
+        ],
+      ),
     );
     final sync = OutlinedButton.icon(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, MetroTarget.minimum),
       ),
       onPressed: busy ? null : onSync,
-      icon: const Icon(Icons.sync),
+      icon: MetroSpin(spinning: busy, child: const Icon(Icons.sync)),
       label: Text(busy ? 'Sincronizando…' : 'Sincronizar'),
     );
     return LayoutBuilder(

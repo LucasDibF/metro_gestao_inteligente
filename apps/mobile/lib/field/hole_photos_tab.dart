@@ -22,14 +22,14 @@ class PhotoFrame extends StatelessWidget {
     child: ClipRRect(
       borderRadius: BorderRadius.circular(MetroRadius.control),
       child: ColoredBox(
-        color: MetroColors.subtle,
+        color: context.metro.subtle,
         child:
             child ??
-            const Center(
+            Center(
               child: Icon(
                 Icons.photo_outlined,
                 size: MetroIconSize.placeholder,
-                color: MetroColors.muted,
+                color: context.metro.muted,
               ),
             ),
       ),

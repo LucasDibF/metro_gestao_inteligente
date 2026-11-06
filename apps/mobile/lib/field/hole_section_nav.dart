@@ -42,10 +42,10 @@ class HoleSectionNav extends StatelessWidget {
       maxScaleFactor: 1.3,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: MetroColors.surface,
+          color: context.metro.surface,
           border: vertical
-              ? const Border(right: BorderSide(color: MetroColors.line))
-              : const Border(top: BorderSide(color: MetroColors.line)),
+              ? Border(right: BorderSide(color: context.metro.line))
+              : Border(top: BorderSide(color: context.metro.line)),
         ),
         child: vertical
             ? SafeArea(
@@ -83,7 +83,7 @@ class _SectionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? MetroColors.brand : MetroColors.muted;
+    final color = selected ? context.metro.brandText : context.metro.muted;
     return Semantics(
       button: true,
       selected: selected,
@@ -100,16 +100,23 @@ class _SectionItem extends StatelessWidget {
             spacing: MetroSpace.xxs,
             children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
+                duration: MetroMotion.of(context, MetroMotion.color),
                 padding: const EdgeInsets.symmetric(
                   horizontal: MetroSpace.lg,
                   vertical: MetroSpace.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: selected ? MetroColors.selection : Colors.transparent,
+                  color: selected
+                      ? context.metro.selection
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(MetroRadius.control),
                 ),
-                child: Icon(icon, size: MetroIconSize.navigation, color: color),
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: color),
+                  duration: MetroMotion.of(context, MetroMotion.color),
+                  builder: (context, value, _) =>
+                      Icon(icon, size: MetroIconSize.navigation, color: value),
+                ),
               ),
               FittedBox(
                 fit: BoxFit.scaleDown,

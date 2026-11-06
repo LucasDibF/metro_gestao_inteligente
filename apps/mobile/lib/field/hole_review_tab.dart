@@ -32,7 +32,7 @@ class HoleReviewTab extends StatelessWidget {
         children: [
           Icon(
             complete ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: complete ? MetroColors.noticeText : MetroColors.muted,
+            color: complete ? context.metro.noticeText : context.metro.muted,
             semanticLabel: complete ? 'Concluído' : 'Pendente',
           ),
           Expanded(
@@ -100,7 +100,7 @@ class HoleReviewTab extends StatelessWidget {
           'Enviar exige conexão. Depois do envio, somente o engenheiro poderá analisar ou devolver o furo para correção.',
           style: Theme.of(
             context,
-          ).textTheme.bodyMedium?.copyWith(color: MetroColors.muted),
+          ).textTheme.bodyMedium?.copyWith(color: context.metro.muted),
         ),
       ],
     );

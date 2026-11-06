@@ -65,9 +65,15 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'metro',
-          style: text.displaySmall?.copyWith(color: MetroColors.brand),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Image.asset(
+            Theme.of(context).brightness == Brightness.dark
+                ? 'assets/brand/metro-wordmark-dark.png'
+                : 'assets/brand/metro-wordmark.png',
+            width: 196,
+            semanticLabel: 'Metro — Gestão Inteligente',
+          ),
         ),
         const SizedBox(height: MetroSpace.lg),
         Semantics(
@@ -77,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: MetroSpace.xs),
         Text(
           'Entre para consultar as obras atribuídas a você.',
-          style: text.bodyLarge?.copyWith(color: MetroColors.muted),
+          style: text.bodyLarge?.copyWith(color: context.metro.muted),
         ),
       ],
     );
@@ -144,11 +150,11 @@ class _LoginScreenState extends State<LoginScreen> {
             button: FilledButton(
               onPressed: _busy ? null : _login,
               child: _busy
-                  ? const SizedBox.square(
+                  ? SizedBox.square(
                       dimension: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: MetroColors.muted,
+                        color: context.metro.muted,
                       ),
                     )
                   : const Text('Entrar'),

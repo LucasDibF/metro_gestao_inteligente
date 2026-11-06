@@ -268,7 +268,7 @@ void applyViewport(
 
 Widget screenApp(Widget home, {String? fontFamily}) => MaterialApp(
   debugShowCheckedModeBanner: false,
-  theme: metroTheme(fontFamily: fontFamily),
+  theme: metroTheme(fontFamily: fontFamily, headingFamily: fontFamily),
   locale: const Locale('pt', 'BR'),
   supportedLocales: const [Locale('pt', 'BR')],
   localizationsDelegates: GlobalMaterialLocalizations.delegates,

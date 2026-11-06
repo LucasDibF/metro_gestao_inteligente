@@ -145,11 +145,15 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
     final holes = (row['children'] as List).cast<Json>();
     return ExpansionTile(
       key: PageStorageKey(row['id']),
+      // The theme sets the timing; reduced motion opens the folder at once.
+      expansionAnimationStyle: MetroMotion.reduced(context)
+          ? AnimationStyle.noAnimation
+          : null,
       tilePadding: const EdgeInsets.symmetric(
         horizontal: MetroSpace.lg,
         vertical: MetroSpace.xs,
       ),
-      leading: const Icon(Icons.folder_outlined, color: MetroColors.muted),
+      leading: Icon(Icons.folder_outlined, color: context.metro.muted),
       title: Text(
         row['name'] as String,
         style: Theme.of(context).textTheme.titleMedium,
@@ -211,9 +215,12 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
               'Esta obra ainda não possui furos. Peça ao responsável para cadastrar os furos no sistema web.',
             ),
           ),
-        for (final row in rows) ...[
+        for (final (index, row) in rows.indexed) ...[
           const SizedBox(height: MetroSpace.xs),
           MetroPanel(
+            index: index,
+            // Holes cannot open while downloading, so their cards stay still.
+            pressable: !row.containsKey('children') && !_downloading,
             child: row.containsKey('children') ? _folder(row) : _hole(row),
           ),
           const SizedBox(height: MetroSpace.xs),

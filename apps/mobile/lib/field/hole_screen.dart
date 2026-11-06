@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../ui/metro_layout.dart';
+import '../ui/metro_theme.dart';
 import '../ui/metro_widgets.dart';
 import 'field_export.dart';
 import 'coordinate_form.dart';
@@ -33,9 +34,9 @@ class HoleScreen extends StatefulWidget {
   State<HoleScreen> createState() => _HoleScreenState();
 }
 
-class _HoleScreenState extends State<HoleScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _sections;
+class _HoleScreenState extends State<HoleScreen> with TickerProviderStateMixin {
+  late TabController _sections;
+  bool? _reducedMotion;
   Json? doc;
   String? error, message;
   bool busy = false;
@@ -48,8 +49,28 @@ class _HoleScreenState extends State<HoleScreen>
   @override
   void initState() {
     super.initState();
-    _sections = TabController(length: 4, vsync: this);
     _start();
+  }
+
+  /// The section view slides for the controller's fixed duration, so the
+  /// controller is rebuilt when the system starts or stops reducing motion.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduced = MetroMotion.reduced(context);
+    if (reduced == _reducedMotion) return;
+    final previous = _reducedMotion == null ? null : _sections;
+    _reducedMotion = reduced;
+    _sections = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: previous?.index ?? 0,
+      animationDuration: MetroMotion.of(context, MetroMotion.enter),
+    );
+    // The old controller is still attached until this frame rebuilds.
+    if (previous != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+    }
   }
 
   /// A hole already on the device opens at once, and catches up if it can.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:metro_mobile/auth/operator_session.dart';
@@ -41,6 +42,16 @@ class ContentsSession extends OperatorSession {
       ],
       'total': 2,
     };
+  }
+}
+
+/// Holds hole snapshots until the test lets them through.
+class HeldDownloadSession extends ScreenSession {
+  final gate = Completer<void>();
+  @override
+  Future<Map<String, dynamic>> get(String route) async {
+    if (route.endsWith('/mobile/snapshot')) await gate.future;
+    return super.get(route);
   }
 }
 
@@ -100,6 +111,33 @@ void main() {
     expect(holeCount(3), '3 furos');
     expect(holesOnDevice(1), '1 furo disponível no aparelho.');
     expect(holesOnDevice(2), '2 furos disponíveis no aparelho.');
+  });
+
+  testWidgets('hole cards do not react to touch while downloading', (
+    tester,
+  ) async {
+    final session = HeldDownloadSession();
+    final store = memoryStore();
+    await tester.pumpWidget(
+      screenApp(
+        WorkContentsScreen(
+          work: const AssignedWork(id: 'work', name: 'Obra', location: ''),
+          session: session,
+          store: store,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(AnimatedScale), findsWidgets);
+    await tester.tap(find.text('Baixar obra para usar offline'));
+    await tester.pump();
+    expect(find.text('Baixando furos…'), findsOneWidget);
+    expect(find.byType(AnimatedScale), findsNothing);
+    session.gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(AnimatedScale), findsWidgets);
+    await tester.pumpWidget(const SizedBox());
+    await store.close();
   });
 
   testWidgets('download informa vários furos no plural', (tester) async {

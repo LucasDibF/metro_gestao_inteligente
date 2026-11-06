@@ -54,6 +54,8 @@ class ConfigurationErrorApp extends StatelessWidget {
     title: 'Metro · Campo',
     debugShowCheckedModeBanner: false,
     theme: metroTheme(),
+    darkTheme: metroTheme(brightness: Brightness.dark),
+    themeMode: ThemeMode.system,
     builder: (context, child) => MediaQuery.withClampedTextScaling(
       maxScaleFactor: metroMaxTextScale,
       child: child!,

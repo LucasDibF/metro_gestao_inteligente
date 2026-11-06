@@ -70,6 +70,27 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Web wordmark (apps/web/public), rendered to PNG at 1x, 2x and 3x.
+  assets:
+    - assets/brand/
+
+  # Same families as the web (apps/web/src/main.tsx), static instances from Google Fonts, SIL OFL 1.1.
+  fonts:
+    - family: IBM Plex Sans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSans-Bold.ttf
+          weight: 700
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-SemiBold.ttf
+          weight: 600
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
