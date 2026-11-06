@@ -142,9 +142,6 @@ abstract final class MetroFonts {
 
   /// Screen and section headings (web h1/h2).
   static const heading = 'Fraunces';
-
-  /// Copyable data such as keys and codes.
-  static const mono = 'IBM Plex Mono';
 }
 
 abstract final class MetroSpace {

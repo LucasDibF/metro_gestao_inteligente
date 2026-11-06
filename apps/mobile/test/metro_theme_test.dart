@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:metro_mobile/ui/metro_theme.dart';
@@ -51,6 +52,23 @@ void main() {
     expect(contrast(p.errorText, p.errorSurface), greaterThanOrEqualTo(7));
     expect(contrast(p.errorText, p.surface), greaterThanOrEqualTo(4.5));
     expect(contrast(p.errorText, p.page), greaterThanOrEqualTo(4.5));
+  });
+
+  test('the app bundles only the font families it uses', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    // Commented template lines start with '#', so they do not match.
+    final families = RegExp(
+      r'^\s*- family: (.+)$',
+      multiLine: true,
+    ).allMatches(pubspec).map((match) => match.group(1)!.trim()).toSet();
+    expect(families, {MetroFonts.sans, MetroFonts.heading});
+    final bundled = Directory('assets/fonts')
+        .listSync()
+        .map((file) => file.uri.pathSegments.last)
+        .where((name) => name.endsWith('.ttf'));
+    for (final name in bundled) {
+      expect(pubspec, contains('assets/fonts/$name'), reason: name);
+    }
   });
 
   test('the active brightness selects its palette', () {
