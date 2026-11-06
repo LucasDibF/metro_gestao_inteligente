@@ -1,6 +1,6 @@
 # Agente de teste de carga da API
 
-Agente do projeto: `api_load_tester`, em `.codex/agents/api_load_tester.toml`. Segue o formato de agente personalizado da [documentação oficial](https://learn.chatgpt.com/docs/agent-configuration/subagents). Herda modelo, ferramentas e permissões da sessão; não muda os agentes existentes. A leitura da configuração pelo cliente depende do projeto aberto e do carregamento da sessão. A existência do TOML não comprova que o cliente já o carregou.
+Agente do projeto: `api_load_tester`, em `.codex/agents/api_load_tester.toml`, arquivo local fora do git. Segue o formato de agente personalizado da [documentação oficial](https://learn.chatgpt.com/docs/agent-configuration/subagents). Herda modelo, ferramentas e permissões da sessão; não muda os agentes existentes. A leitura da configuração pelo cliente depende do projeto aberto e do carregamento da sessão. A existência do TOML não comprova que o cliente já o carregou.
 
 ## Objetivo
 
