@@ -15,7 +15,8 @@ import {
 } from 'lucide-react';
 import { MapPreview } from './MapPreview';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { auth, longRequestSignal, type Profile } from '../auth/client';
+import { auth, type Profile } from '../auth/client';
+import { downloadIssuePdf } from './pdf-download';
 interface Hole {
   id: string;
   code: string;
@@ -245,17 +246,12 @@ export function Reports({
     setBusy(true);
     setError('');
     try {
-      const blob = await auth.request<Blob>(
-          base + '/' + reportId + '/emissoes/' + issue.id + '/pdf',
-          { signal: longRequestSignal() },
-          (r) => r.blob(),
-        ),
-        url = URL.createObjectURL(blob),
-        link = document.createElement('a');
-      link.href = url;
-      link.download = `sondagem-emissao-${issue.issueNumber}.pdf`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      await downloadIssuePdf({
+        workId: work.id,
+        reportId,
+        issueId: issue.id,
+        issueNumber: issue.issueNumber,
+      });
     } catch (e) {
       failed(e);
     } finally {
