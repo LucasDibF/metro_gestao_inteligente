@@ -177,3 +177,9 @@ Testes: 61 unitários, 14 integrações e seis de navegador passaram, além de t
 Novas emissões seguem a composição: capa; perfil e respectivas fotografias de cada furo, na ordem selecionada; croqui ao final. Continuações do perfil e do fotográfico permanecem junto do próprio furo. Furos sem fotografias não criam folha vazia. O modelo 0.8.14 e anteriores conservam a montagem histórica, sem alterar arquivos ou snapshots já emitidos.
 
 Validação: testes de sequência para dois furos, fotografias fora de ordem no snapshot, múltiplas folhas de fotos, perfil com continuação e furo sem foto. PDF fictício de seis páginas renderizado e inspecionado; geometria aprovada preservada.
+
+## Descrição no último metro parcial — modelo 0.8.16
+
+No metro final com penetração parcial (por exemplo, 30/15 e 30/1, parada em 3,16 m), a grade desenha a linha inteira com a profundidade medida, mas a camada era desenhada só com os centímetros reais. Com cerca de 4 px de altura, nenhuma linha cabia e a descrição ia para uma folha de complemento, deixando a linha vazia. A partir do 0.8.16, as camadas desse metro ocupam a linha inteira, na mesma proporção do trecho medido. Quando a descrição não cabe, a fonte diminui de 10 até 6 px. A folha de complemento fica reservada ao texto que não cabe nem com 6 px. A camada desse metro continua sem consistência, porque não há N-SPT.
+
+O modelo 0.8.15 e os anteriores conservam o desenho histórico. Validação: testes de regressão com o caso real (linha 3–4 m preenchida, sem complemento, e o 0.8.15 inalterado) e com descrição longa reduzida ou movida ao complemento; 133 testes unitários, tipos e formatação aprovados. A emissão real foi renderizada nos dois modelos e inspecionada: 0.8.15 com 5 páginas (1 de complemento) e 0.8.16 com 4, sem complemento.

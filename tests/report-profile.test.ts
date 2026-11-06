@@ -786,3 +786,92 @@ test('company branding remains active in versions after 0.8.13', () => {
     assert.equal(snapshotCompanyLogo({ ...snapshot, templateVersion, tenant }), logo);
   assert.equal(snapshotCompanyLogo({ ...snapshot, templateVersion: '0.8.12', tenant }), undefined);
 });
+
+// Emission reproduced from a real report: 30/15 + 30/1 in the fourth metre, stop at 3.16 m.
+const partialStop: ReportSnapshot['holes'][number] = {
+  ...hole,
+  executedDepthM: '3.16',
+  layers: [
+    {
+      fromM: '0',
+      toM: '3.16',
+      soilType: 'Argila arenosa',
+      description: 'marrom com veios variegados',
+    },
+  ],
+  tests: [
+    { ...hole.tests[0], depthM: '1', advances: [], result: { nSpt: null, status: 'NOT_TESTED' } },
+    { ...hole.tests[0], depthM: '2', result: { nSpt: 6, status: 'CONVENTIONAL' } },
+    { ...hole.tests[0], depthM: '3', result: { nSpt: 46, status: 'CONVENTIONAL' } },
+    {
+      ...hole.tests[0],
+      depthM: '4',
+      advances: [
+        { blows: 30, penetrationMm: 150 },
+        { blows: 30, penetrationMm: 10 },
+      ],
+      result: { nSpt: null, status: 'PARTIAL' },
+    },
+  ],
+};
+const layerTexts = (html: string) =>
+  Array.from(
+    html.matchAll(/<text x="210" y="([^"]+)"[^>]*font-size="([^"]+)"[^>]*>([^<]*)<\/text>/g),
+    (m) => ({ y: Number(m[1]), size: Number(m[2]), text: m[3] }),
+  );
+
+test('0.8.16 draws the partial terminal layer across its row without a supplement sheet', () => {
+  const html = engineeringProfiles({ ...snapshot, templateVersion: '0.8.16' }, partialStop);
+  assert.ok(!html.includes('description-continuation'));
+  assert.ok(!html.includes('ver complemento'));
+  const last = layerTexts(html).filter((line) => line.text.includes('veios'));
+  assert.ok(last.length >= 1);
+  // Row 3–4 spans y 156.5–182; the final layer text sits inside it.
+  const finalLines = last.filter((line) => line.y > 156.5);
+  assert.ok(finalLines.length >= 1);
+  assert.ok(finalLines.every((line) => line.y < 182));
+  assert.match(
+    html,
+    /data-from-m="3" data-to-m="3\.16"[^>]*>(<rect[^>]*>)?<rect x="29" y="156\.5" width="26" height="25\.5"/,
+  );
+  const legacy = engineeringProfiles({ ...snapshot, templateVersion: '0.8.15' }, partialStop);
+  assert.ok(legacy.includes('description-continuation'));
+});
+
+test('0.8.16 shrinks a long description to fit its layer before using a supplement', () => {
+  const long = {
+    ...hole,
+    executedDepthM: '2',
+    tests: hole.tests.slice(0, 2),
+    layers: [
+      { fromM: '0', toM: '1', soilType: 'Argila arenosa', description: 'W'.repeat(40) },
+      { fromM: '1', toM: '2', soilType: 'Areia', description: 'fina' },
+    ],
+  };
+  const current = engineeringProfiles({ ...snapshot, templateVersion: '0.8.16' }, long);
+  assert.ok(!current.includes('description-continuation'));
+  const first = layerTexts(current).filter((line) => line.y < 105.5);
+  assert.equal(
+    first
+      .map((line) => line.text)
+      .join('')
+      .replace(/ /g, ''),
+    'Argilaarenosa,' + 'W'.repeat(40),
+  );
+  assert.ok(first.every((line) => line.size < 10 && line.size >= 6));
+  assert.ok(layerTexts(current).some((line) => line.y > 105.5 && line.size === 10));
+  assert.ok(
+    engineeringProfiles({ ...snapshot, templateVersion: '0.8.15' }, long).includes(
+      'description-continuation',
+    ),
+  );
+  // Text that cannot fit even at the minimum size still keeps the explicit supplement.
+  const huge = engineeringProfiles(
+    { ...snapshot, templateVersion: '0.8.16' },
+    {
+      ...long,
+      layers: [{ fromM: '0', toM: '2', soilType: 'Areia', description: 'Z'.repeat(5e3) }],
+    },
+  );
+  assert.ok(huge.includes('description-continuation'));
+});

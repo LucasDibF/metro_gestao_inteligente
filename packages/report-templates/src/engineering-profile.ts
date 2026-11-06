@@ -219,6 +219,18 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
       templateSince(s.templateVersion, '0.8.7'),
       templateSince(s.templateVersion, '0.8.14'),
     ).filter((l) => Number(l.fromM) < to && Number(l.toM) > from);
+    const shrinkLayerText = templateSince(s.templateVersion, '0.8.16');
+    // The partial terminal metre is drawn as a full row labelled with the measured depth;
+    // from 0.8.16 its layers stretch across that row instead of the few real centimetres.
+    const partialRowStart = termination.row - 1;
+    const layerRowDepth = (d: number) =>
+      shrinkLayerText &&
+      termination.partial &&
+      d > partialRowStart &&
+      termination.depth > partialRowStart
+        ? partialRowStart +
+          Math.min(1, (d - partialRowStart) / (termination.depth - partialRowStart))
+        : d;
     const continuousGraph = templateSince(s.templateVersion, '0.8.9');
     const partialGraph = templateSince(s.templateVersion, '0.8.8');
     const largest = Math.max(
@@ -352,21 +364,29 @@ export function engineeringProfiles(s: ReportSnapshot, h: Hole, options: Profile
        : soil.startsWith('argila')
          ? 'clay'
          : 'other';
-     const yy = y(Math.max(from, Number(l.fromM))),
-       end = y(Math.min(to, Number(l.toM)));
-     const words = wrap(
-         templateSince(s.templateVersion, '0.8.6')
-           ? formatSoilDescription([l.soilType, l.description])
-           : `${l.soilType}. ${l.description}`,
-         230,
-       ),
-       limit = Math.max(0, 1 + Math.floor((end - yy - 13) / 12));
+     const yy = y(layerRowDepth(Math.max(from, Number(l.fromM)))),
+       end = y(layerRowDepth(Math.min(to, Number(l.toM))));
+     const description = templateSince(s.templateVersion, '0.8.6')
+       ? formatSoilDescription([l.soilType, l.description])
+       : `${l.soilType}. ${l.description}`;
+     // From 0.8.16 a description that does not fit shrinks before moving to a supplement sheet.
+     const fitted = (size: number) => {
+       const words = wrap(description, (230 * 10) / size),
+         limit = Math.max(0, 1 + Math.floor((end - yy - size * 1.3) / (size * 1.2)));
+       return { size, words, limit };
+     };
+     let layout = fitted(10);
+     if (shrinkLayerText)
+       for (let size = 9.5; layout.words.length > layout.limit && size >= 6; size -= 0.5)
+         layout = fitted(size);
+     const { size, words, limit } = layout;
+     const lineHeight = size * 1.2;
      const shown = words.slice(0, limit);
      if (words.length > limit) {
        overflows.push(l);
        if (limit > 0) shown[limit - 1] = 'Descrição integral: ver complemento.';
      }
-     return `<g class="sampled-layer" data-from-m="${l.fromM}" data-to-m="${l.toM}"${options.interactive ? ` data-sheet-selection="layer" role="button" tabindex="0" aria-label="Consultar camada de ${e(l.fromM)} a ${e(l.toM)} m"` : ''}>${options.interactive ? `<rect class="interaction-hit" x="29" y="${yy}" width="301" height="${end - yy}" fill="transparent"/>` : ''}<rect x="29" y="${yy}" width="26" height="${end - yy}" fill="url(#${pattern})"/><path d="M28 ${end}H56M90 ${end}H330" stroke="#777" stroke-width=".7"/>${shown.map((line, i) => text(210, templateSince(s.templateVersion, '0.8.3') ? (yy + end) / 2 + (i - (shown.length - 1) / 2) * 12 : yy + 11 + i * 12, line, 'middle', `font-size="10"${templateSince(s.templateVersion, '0.8.3') ? ' dominant-baseline="central"' : ''}`)).join('')}</g>`;
+     return `<g class="sampled-layer" data-from-m="${l.fromM}" data-to-m="${l.toM}"${options.interactive ? ` data-sheet-selection="layer" role="button" tabindex="0" aria-label="Consultar camada de ${e(l.fromM)} a ${e(l.toM)} m"` : ''}>${options.interactive ? `<rect class="interaction-hit" x="29" y="${yy}" width="301" height="${end - yy}" fill="transparent"/>` : ''}<rect x="29" y="${yy}" width="26" height="${end - yy}" fill="url(#${pattern})"/><path d="M28 ${end}H56M90 ${end}H330" stroke="#777" stroke-width=".7"/>${shown.map((line, i) => text(210, templateSince(s.templateVersion, '0.8.3') ? (yy + end) / 2 + (i - (shown.length - 1) / 2) * lineHeight : yy + 11 + i * 12, line, 'middle', `font-size="${size}"${templateSince(s.templateVersion, '0.8.3') ? ' dominant-baseline="central"' : ''}`)).join('')}</g>`;
    })
    .join('')}
  ${visible
