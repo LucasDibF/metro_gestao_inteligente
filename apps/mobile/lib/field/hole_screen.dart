@@ -34,9 +34,9 @@ class HoleScreen extends StatefulWidget {
   State<HoleScreen> createState() => _HoleScreenState();
 }
 
-class _HoleScreenState extends State<HoleScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _sections;
+class _HoleScreenState extends State<HoleScreen> with TickerProviderStateMixin {
+  late TabController _sections;
+  bool? _reducedMotion;
   Json? doc;
   String? error, message;
   bool busy = false;
@@ -49,12 +49,28 @@ class _HoleScreenState extends State<HoleScreen>
   @override
   void initState() {
     super.initState();
+    _start();
+  }
+
+  /// The section view slides for the controller's fixed duration, so the
+  /// controller is rebuilt when the system starts or stops reducing motion.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduced = MetroMotion.reduced(context);
+    if (reduced == _reducedMotion) return;
+    final previous = _reducedMotion == null ? null : _sections;
+    _reducedMotion = reduced;
     _sections = TabController(
       length: 4,
       vsync: this,
-      animationDuration: MetroMotion.enter,
+      initialIndex: previous?.index ?? 0,
+      animationDuration: MetroMotion.of(context, MetroMotion.enter),
     );
-    _start();
+    // The old controller is still attached until this frame rebuilds.
+    if (previous != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+    }
   }
 
   /// A hole already on the device opens at once, and catches up if it can.

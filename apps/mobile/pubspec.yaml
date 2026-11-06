@@ -90,10 +90,6 @@ flutter:
       fonts:
         - asset: assets/fonts/Fraunces-SemiBold.ttf
           weight: 600
-    - family: IBM Plex Mono
-      fonts:
-        - asset: assets/fonts/IBMPlexMono-Regular.ttf
-          weight: 400
 
   # To add assets to your application, add an assets section, like this:
   # assets:

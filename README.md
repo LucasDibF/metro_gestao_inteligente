@@ -168,7 +168,7 @@ A mudança de diretório não publica, envia ou sincroniza arquivos com o GitHub
 
 ## Testes de carga da API
 
-O agente especializado `api_load_tester` está definido em `.codex/agents/api_load_tester.toml`. O [plano e as instruções de uso](docs/teste-de-carga-api.md) cobrem concorrência, limites de requisições, banco isolado, filas, fotos e PDFs. A criação do agente não executa carga nem estabelece capacidade de produção.
+O agente especializado `api_load_tester` é configurado localmente em `.codex/agents/api_load_tester.toml`, fora do git. O [plano e as instruções de uso](docs/teste-de-carga-api.md) cobrem concorrência, limites de requisições, banco isolado, filas, fotos e PDFs. A criação do agente não executa carga nem estabelece capacidade de produção.
 
 ## Aplicativo de campo em Flutter
 

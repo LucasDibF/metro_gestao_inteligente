@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 /// `brand.css`), converted from OKLCH. Text that must survive sunlight keeps
 /// darker tones than the web where the web value falls below 4.5:1 (3:1 for
 /// field borders): [muted], [inputLine] and [noticeText] in the light theme.
+/// [errorText] goes further, to 7:1 on [errorSurface], so errors read in sun.
 @immutable
 class MetroPalette extends ThemeExtension<MetroPalette> {
   const MetroPalette({
@@ -54,7 +55,7 @@ class MetroPalette extends ThemeExtension<MetroPalette> {
     inputLine: Color(0xff7d7770),
     focus: Color(0xff007bad),
     errorSurface: Color(0xffffebe7),
-    errorText: Color(0xffc5372f),
+    errorText: Color(0xff8b2824),
     noticeSurface: Color(0xffe8f7e8),
     noticeText: Color(0xff2d6a31),
   );

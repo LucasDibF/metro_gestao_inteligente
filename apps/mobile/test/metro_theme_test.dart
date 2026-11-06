@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:metro_mobile/ui/metro_theme.dart';
@@ -10,10 +11,7 @@ double contrast(Color a, Color b) {
 }
 
 void main() {
-  const palettes = {
-    'claro': MetroPalette.light,
-    'escuro': MetroPalette.dark,
-  };
+  const palettes = {'claro': MetroPalette.light, 'escuro': MetroPalette.dark};
 
   for (final MapEntry(key: name, value: p) in palettes.entries) {
     test('$name: text keeps at least 4.5:1 on every surface it is used on', () {
@@ -48,6 +46,30 @@ void main() {
       expect(contrast(p.focus, p.surface), greaterThanOrEqualTo(3));
     });
   }
+
+  test('claro: errors keep 7:1 on their surface and 4.5:1 on the page', () {
+    const p = MetroPalette.light;
+    expect(contrast(p.errorText, p.errorSurface), greaterThanOrEqualTo(7));
+    expect(contrast(p.errorText, p.surface), greaterThanOrEqualTo(4.5));
+    expect(contrast(p.errorText, p.page), greaterThanOrEqualTo(4.5));
+  });
+
+  test('the app bundles only the font families it uses', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    // Commented template lines start with '#', so they do not match.
+    final families = RegExp(
+      r'^\s*- family: (.+)$',
+      multiLine: true,
+    ).allMatches(pubspec).map((match) => match.group(1)!.trim()).toSet();
+    expect(families, {MetroFonts.sans, MetroFonts.heading});
+    final bundled = Directory('assets/fonts')
+        .listSync()
+        .map((file) => file.uri.pathSegments.last)
+        .where((name) => name.endsWith('.ttf'));
+    for (final name in bundled) {
+      expect(pubspec, contains('assets/fonts/$name'), reason: name);
+    }
+  });
 
   test('the active brightness selects its palette', () {
     expect(metroTheme().extension<MetroPalette>(), MetroPalette.light);

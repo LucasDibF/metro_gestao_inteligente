@@ -94,6 +94,31 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets('a pressed panel springs back once the finger scrolls', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        ListView(
+          children: [
+            const MetroPanel(pressable: true, child: MetroRow(title: 'Obra')),
+            for (var index = 0; index < 20; index++) const SizedBox(height: 80),
+          ],
+        ),
+      ),
+    );
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Obra')),
+    );
+    await tester.pump();
+    expect(_scale(tester), MetroPressable.pressedScale);
+    await gesture.moveBy(const Offset(0, -40));
+    await tester.pump();
+    expect(_scale(tester), 1);
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('reduced motion keeps pressable panels still', (tester) async {
     await tester.pumpWidget(
       _app(
@@ -125,5 +150,21 @@ void main() {
     await tester.pumpWidget(spin(false));
     await tester.pumpAndSettle();
     expect(turns(), 0);
+  });
+
+  testWidgets('the sync icon turns again when work resumes mid-stop', (
+    tester,
+  ) async {
+    Widget spin(bool spinning) =>
+        _app(MetroSpin(spinning: spinning, child: const Icon(Icons.sync)));
+    await tester.pumpWidget(spin(true));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpWidget(spin(false));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpWidget(spin(true));
+    await tester.pump(const Duration(seconds: 1));
+    expect(tester.hasRunningAnimations, isTrue);
+    await tester.pumpWidget(spin(false));
+    await tester.pumpAndSettle();
   });
 }

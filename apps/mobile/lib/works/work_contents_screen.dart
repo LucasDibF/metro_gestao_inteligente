@@ -145,6 +145,10 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
     final holes = (row['children'] as List).cast<Json>();
     return ExpansionTile(
       key: PageStorageKey(row['id']),
+      // The theme sets the timing; reduced motion opens the folder at once.
+      expansionAnimationStyle: MetroMotion.reduced(context)
+          ? AnimationStyle.noAnimation
+          : null,
       tilePadding: const EdgeInsets.symmetric(
         horizontal: MetroSpace.lg,
         vertical: MetroSpace.xs,
@@ -215,7 +219,8 @@ class _WorkContentsScreenState extends State<WorkContentsScreen> {
           const SizedBox(height: MetroSpace.xs),
           MetroPanel(
             index: index,
-            pressable: !row.containsKey('children'),
+            // Holes cannot open while downloading, so their cards stay still.
+            pressable: !row.containsKey('children') && !_downloading,
             child: row.containsKey('children') ? _folder(row) : _hole(row),
           ),
           const SizedBox(height: MetroSpace.xs),
