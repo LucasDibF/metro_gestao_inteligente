@@ -210,13 +210,19 @@ class _MetroSpinState extends State<MetroSpin>
     _sync();
   }
 
+  /// Whether the icon is in its endless turn, as opposed to finishing one.
+  var _repeating = false;
+
   void _sync() {
     if (widget.spinning && !MetroMotion.reduced(context)) {
-      if (!_turns.isAnimating) _turns.repeat();
-    } else if (_turns.isAnimating) {
+      // Work that resumes while the last turn finishes turns again.
+      if (!_repeating) _turns.repeat();
+      _repeating = true;
+    } else if (_repeating) {
+      _repeating = false;
       // Finish the current turn instead of snapping back.
       _turns.animateTo(1, duration: MetroMotion.collapse).then((_) {
-        if (mounted) _turns.value = 0;
+        if (mounted && !_repeating) _turns.value = 0;
       });
     }
   }

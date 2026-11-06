@@ -115,4 +115,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(turns(), 0);
   });
+
+  testWidgets('the sync icon turns again when work resumes mid-stop', (
+    tester,
+  ) async {
+    Widget spin(bool spinning) =>
+        _app(MetroSpin(spinning: spinning, child: const Icon(Icons.sync)));
+    await tester.pumpWidget(spin(true));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpWidget(spin(false));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpWidget(spin(true));
+    await tester.pump(const Duration(seconds: 1));
+    expect(tester.hasRunningAnimations, isTrue);
+    await tester.pumpWidget(spin(false));
+    await tester.pumpAndSettle();
+  });
 }
