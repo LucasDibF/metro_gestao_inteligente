@@ -81,7 +81,7 @@ Os testes de navegador usam o frontend e a API compilados e exigem `npm run buil
 
 Testes de integração/navegador usam as duas conexões de banco, criam seus próprios dados temporários e removem as fixtures. Execute-os em banco local dedicado a desenvolvimento/testes. As verificações usam o papel restrito para comprovar as políticas; a API recusa superusuário, BYPASSRLS ou proprietário das tabelas. O contexto de empresa é transacional, sem aceitar cabeçalhos livres como prova de identidade.
 
-`npm run format` padroniza o código; `npm run format:check` verifica sem alterar. Dependências, builds e capturas são ignorados. Para parar apenas os serviços locais: `docker compose down`.
+`npm run format` padroniza o código; `npm run format:check` verifica sem alterar. Dependências, builds e capturas são ignorados. Os serviços locais (`db` e `storage`) usam `restart: unless-stopped` e voltam sozinhos depois de um reinício do Docker ou do Mac; só não voltam se tiverem sido parados à mão (`docker stop` ou `docker compose stop`). Para parar apenas os serviços locais: `docker compose down`.
 
 ## Operação local e preparação futura de implantação
 
