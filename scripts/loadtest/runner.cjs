@@ -480,6 +480,31 @@ async function stage(vus, seconds, warmup = 30, label = `${vus}-VU`) {
   );
   return result;
 }
+/**
+ * The approval copies the reviewer from the engineer's own profile; a rerun keeps a complete one.
+ * The values are obviously fictitious and the optional contact fields are preserved.
+ */
+async function ensureReviewerProfile(actor) {
+  const profile = await required(actor, '/perfil-profissional', undefined, 'GET', {
+    safeRetry: true,
+  });
+  if (profile.complete) return;
+  await required(
+    actor,
+    '/perfil-profissional',
+    {
+      fullName: 'Engenheira Demonstração',
+      creaNumber: '123456',
+      creaUf: 'SP',
+      professionalTitle: 'Engenheira Civil',
+      phone: profile.phone,
+      professionalEmail: profile.professionalEmail,
+      version: profile.version,
+    },
+    'PUT',
+    { safeRetry: true },
+  );
+}
 async function mediaAndPdf() {
   phase = 'bounded-files-and-pdf';
   measuring = false;
@@ -497,6 +522,7 @@ async function mediaAndPdf() {
   photoIds.push(
     ...currentFiles.photos.filter((p) => p.processingState === 'READY').map((p) => p.id),
   );
+  await ensureReviewerProfile(actor);
   for (let index = 0; index < manifest.reportHoles.length; index++) {
     const p = root + '/furos/' + manifest.reportHoles[index];
     const files = await required(actor, p + '/arquivos', undefined, 'GET', { safeRetry: true });
@@ -542,8 +568,6 @@ async function mediaAndPdf() {
       p + '/tecnico/aprovar',
       {
         technicalVersion: technical.hole.technicalVersion,
-        reviewerName: 'Responsável fictício',
-        reviewerRegistration: 'SEM VALIDADE',
         note: 'Aprovação somente de teste',
       },
       'POST',

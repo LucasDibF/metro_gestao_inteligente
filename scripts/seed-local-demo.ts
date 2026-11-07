@@ -21,6 +21,33 @@ async function main() {
     if (!r.ok) throw Error(`Demo step failed (${r.status}): ${path}`);
     return r.status === 204 ? (undefined as T) : (r.json() as Promise<T>);
   }
+  /**
+   * The approval copies the reviewer from the engineer's own profile, so the demo account needs a
+   * complete one. A complete profile is kept as it is; otherwise the four required fields get
+   * obviously fictitious values and the optional contact fields are preserved.
+   */
+  async function ensureDemoReviewerProfile(): Promise<void> {
+    const profile = await call<{
+      complete: boolean;
+      version: number;
+      phone: string | null;
+      professionalEmail: string | null;
+    }>('/perfil-profissional');
+    if (profile.complete) return;
+    await call(
+      '/perfil-profissional',
+      {
+        fullName: 'Engenheira Demonstração',
+        creaNumber: '123456',
+        creaUf: 'SP',
+        professionalTitle: 'Engenheira Civil',
+        phone: profile.phone,
+        professionalEmail: profile.professionalEmail,
+        version: profile.version,
+      },
+      'PUT',
+    );
+  }
   const original = await call<{ role: string }>('/auth/me');
   const workName = 'DEMO — fluxo completo (dados fictícios)';
   try {
@@ -32,6 +59,7 @@ async function main() {
       return;
     }
     await call('/auth/dev-role', { role: 'ENGINEER' });
+    await ensureDemoReviewerProfile();
     const work = await call<{ id: string }>('/obras', {
       name: workName,
       clientName: 'Demonstração local — sem dados reais',
@@ -111,8 +139,6 @@ async function main() {
       await call(path + '/tecnico/aprovar', {
         technicalVersion: version,
         note: 'Aprovação de demonstração, sem validade técnica para obra real.',
-        reviewerName: 'Responsável fictício — demonstração',
-        reviewerRegistration: 'DEMO — sem validade',
       });
       if (index === 0) {
         const image = await sharp(
