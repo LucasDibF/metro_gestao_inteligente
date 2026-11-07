@@ -3,6 +3,7 @@ import type { ReportSnapshot } from './types';
 import { templateSince } from './template-version';
 import { metroWordmark } from './metro-brand';
 import { escapeHtml as e } from './html';
+import { missingFieldWording } from './missing-field';
 
 /** Based on the centered cover in sondagem; uses only immutable issue data. */
 export function reportCover(s: ReportSnapshot): string {
@@ -16,18 +17,22 @@ export function reportCover(s: ReportSnapshot): string {
   const options = { timeZone: 'America/Sao_Paulo' };
   const date = issued.toLocaleDateString('pt-BR', options);
   const year = issued.toLocaleDateString('pt-BR', { ...options, year: 'numeric' });
-  const city = [s.work.city, s.work.state].filter(Boolean).join(' - ') || 'Local não informado';
+  const notInformed = (wording: string) => missingFieldWording(s.templateVersion, wording);
+  const city =
+    [s.work.city, s.work.state].filter(Boolean).join(' - ') || notInformed('Local não informado');
+  // From 0.8.17 a cover without city or state prints no location line at all.
+  const location = city ? `<p class="cover-location">${e(city)}</p>` : '';
   return `<section class="page report-cover" aria-label="Capa do relatório SPT">
     <div class="cover-company">${e(s.tenant.name)}</div>
     <div class="cover-main">
       <h1>RELATÓRIO DE SONDAGEM<br>À PERCUSSÃO - SPT</h1>
       <dl class="cover-details">
-        <div><dt>Cliente</dt><dd>${e(s.work.clientName?.trim() || 'Não informado')}</dd></div>
+        <div><dt>Cliente</dt><dd>${e(s.work.clientName?.trim() || notInformed('Não informado'))}</dd></div>
         <div><dt>Obra / Projeto</dt><dd>${e(s.work.name)}</dd></div>
         <div><dt>Data do relatório</dt><dd>${e(date)}</dd></div>
       </dl>
     </div>
-    <div class="cover-bottom">${companyBrand ?? (['0.8.11', '0.8.12'].includes(s.templateVersion) ? `<span class="report-platform">${metroWordmark}</span>` : '')}<p class="cover-location">${e(city)}</p><p class="cover-year">${e(year)}</p>
+    <div class="cover-bottom">${companyBrand ?? (['0.8.11', '0.8.12'].includes(s.templateVersion) ? `<span class="report-platform">${metroWordmark}</span>` : '')}${location}<p class="cover-year">${e(year)}</p>
       <p class="cover-trace">Emissão ${s.issueNumber} · Composição ${s.report.version} · Modelo ${e(s.templateVersion)} · Folha __SHEET__ / __TOTAL__</p>
     </div>
   </section>`;
