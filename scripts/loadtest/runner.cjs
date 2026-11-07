@@ -42,6 +42,10 @@ function normalRoute(url) {
   return url.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/g, ':id').replace(/\?.*$/, '');
 }
 const { summary } = require('./metrics.cjs');
+const {
+  needsDemoReviewerProfile,
+  demoReviewerProfileBody,
+} = require('../demo-reviewer-profile.cjs');
 function checkpoint() {
   fs.writeFileSync(privateFile, JSON.stringify(manifest, null, 2), { mode: 0o600 });
   save(path.join(config.dir, 'progress.json'), {
@@ -481,29 +485,17 @@ async function stage(vus, seconds, warmup = 30, label = `${vus}-VU`) {
   return result;
 }
 /**
- * The approval copies the reviewer from the engineer's own profile; a rerun keeps a complete one.
- * The values are obviously fictitious and the optional contact fields are preserved.
+ * The approval copies the reviewer from the engineer's own profile. An incomplete profile, or the
+ * old unmarked demo one, gets the fictitious demo values; any other complete profile is kept.
  */
 async function ensureReviewerProfile(actor) {
   const profile = await required(actor, '/perfil-profissional', undefined, 'GET', {
     safeRetry: true,
   });
-  if (profile.complete) return;
-  await required(
-    actor,
-    '/perfil-profissional',
-    {
-      fullName: 'Engenheira Demonstração',
-      creaNumber: '123456',
-      creaUf: 'SP',
-      professionalTitle: 'Engenheira Civil',
-      phone: profile.phone,
-      professionalEmail: profile.professionalEmail,
-      version: profile.version,
-    },
-    'PUT',
-    { safeRetry: true },
-  );
+  if (!needsDemoReviewerProfile(profile)) return;
+  await required(actor, '/perfil-profissional', demoReviewerProfileBody(profile), 'PUT', {
+    safeRetry: true,
+  });
 }
 async function mediaAndPdf() {
   phase = 'bounded-files-and-pdf';

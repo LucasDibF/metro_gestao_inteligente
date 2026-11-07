@@ -1,6 +1,11 @@
 import 'dotenv/config';
 import sharp from 'sharp';
 import { randomUUID } from 'node:crypto';
+import {
+  demoReviewerProfileBody,
+  needsDemoReviewerProfile,
+  type ReadReviewerProfile,
+} from './demo-reviewer-profile.cjs';
 async function main() {
   if (process.env.NODE_ENV !== 'development' || process.env.DEV_AUTH_BYPASS !== 'true')
     throw Error('Demo requires local development bypass');
@@ -23,30 +28,13 @@ async function main() {
   }
   /**
    * The approval copies the reviewer from the engineer's own profile, so the demo account needs a
-   * complete one. A complete profile is kept as it is; otherwise the four required fields get
-   * obviously fictitious values and the optional contact fields are preserved.
+   * complete one. An incomplete profile, or the old unmarked demo one, gets the fictitious demo
+   * values with the optional contact fields preserved; any other complete profile is kept.
    */
   async function ensureDemoReviewerProfile(): Promise<void> {
-    const profile = await call<{
-      complete: boolean;
-      version: number;
-      phone: string | null;
-      professionalEmail: string | null;
-    }>('/perfil-profissional');
-    if (profile.complete) return;
-    await call(
-      '/perfil-profissional',
-      {
-        fullName: 'Engenheira Demonstração',
-        creaNumber: '123456',
-        creaUf: 'SP',
-        professionalTitle: 'Engenheira Civil',
-        phone: profile.phone,
-        professionalEmail: profile.professionalEmail,
-        version: profile.version,
-      },
-      'PUT',
-    );
+    const profile = await call<ReadReviewerProfile>('/perfil-profissional');
+    if (!needsDemoReviewerProfile(profile)) return;
+    await call('/perfil-profissional', demoReviewerProfileBody(profile), 'PUT');
   }
   const original = await call<{ role: string }>('/auth/me');
   const workName = 'DEMO — fluxo completo (dados fictícios)';
