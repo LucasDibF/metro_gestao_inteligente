@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
+    "pretypecheck": "npm run build -w @spt/api-contracts",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 127.0.0.1"
   },
