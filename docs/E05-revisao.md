@@ -26,7 +26,7 @@ A aprovação não aceita mais nome e registro digitados. Na mesma transação d
 | `reviewerRegistration` | `CREA-` + `creaUf` + `creaNumber` | `CREA-SP 5061234567` |
 | `reviewerTitle`        | `professionalTitle`               | `Engenheira Civil`   |
 
-Sem perfil, ou com nome, número do CREA, UF ou título vazios, a aprovação falha com 409 `PROFESSIONAL_PROFILE_INCOMPLETE` e `missingFields` (lista com `fullName`, `creaNumber`, `creaUf` e `professionalTitle`, na ordem em que faltam). O furo continua em revisão. O evento `REVIEW_APPROVE` guarda a mesma cópia nos detalhes. Telefone e e-mail do perfil não vão para o furo nem para o relatório.
+Sem perfil, ou com nome, número do CREA, UF ou título vazios, a aprovação falha com 409 `PROFESSIONAL_PROFILE_INCOMPLETE` e `missingFields`, a lista dos campos que faltam, sempre nesta ordem: `fullName`, `creaNumber`, `creaUf`, `professionalTitle`. O furo continua em revisão. O evento `REVIEW_APPROVE` guarda a mesma cópia nos detalhes. Telefone e e-mail do perfil não vão para o furo nem para o relatório.
 
 A cópia é fixa: editar o perfil depois não altera furos já aprovados nem emissões. Enviar para revisão, devolver ao campo e as invalidações do banco limpam as três colunas juntas. O título segue a mesma visibilidade de nome e registro: as listagens de furos só o mostram para quem tem ENGINEER, e o snapshot do app de campo traz os três como `null`.
 
@@ -39,22 +39,22 @@ Prefixo autenticado `/api/v1/perfil-profissional`, só para quem tem ENGINEER co
 | GET    | —                                                                                                | 200      |
 | PUT    | `fullName`, `creaNumber`, `creaUf`, `professionalTitle`, `phone`, `professionalEmail`, `version` | 200      |
 
-A resposta é sempre o perfil inteiro: os seis campos, `version`, `updatedAt`, `complete` e `missingFields`. Sem perfil salvo, os campos vêm `null` e `version` vem 0. O PUT substitui o perfil inteiro: campo ausente, `null` ou só com espaços fica vazio. Com `version` 0 ele cria o perfil; depois, envia a versão lida. Versão diferente, ou uma segunda criação, retorna 409 `RECORD_VERSION_CONFLICT`.
+A resposta é sempre o perfil inteiro: os seis campos, `version`, `updatedAt`, `complete` e `missingFields`. Sem perfil salvo, os campos vêm `null` e `version` vem 0. O PUT substitui o perfil inteiro: campo ausente, `null` ou só com espaços fica vazio. Com `version` 0 ele cria o perfil; depois, envia a versão lida. Versão diferente, ou uma segunda criação, retorna 409 `RECORD_VERSION_CONFLICT`. `version` ausente, negativa ou não inteira retorna 400.
 
 Regras de cada campo (erro 400 `PROFESSIONAL_PROFILE_INVALID` com `field` indicando o campo):
 
-- `fullName`: até 200 caracteres; espaços repetidos viram um.
+- `fullName`: até 200 caracteres.
 - `creaNumber`: só o número, sem a UF. Pontos e espaços são removidos e letras viram maiúsculas; o resultado precisa ter de 3 a 12 dígitos, opcionalmente seguidos de `-` ou `/` e um sufixo de 1 ou 2 letras ou dígitos (`5061234567`, `123456-D`, `506.123.456-d` vira `506123456-D`).
-- `creaUf`: uma das 27 siglas, gravada em maiúsculas. Número e UF são obrigatórios juntos.
+- `creaUf`: uma das 27 siglas, gravada em maiúsculas. Número e UF vão juntos: um sem o outro retorna o erro no campo que falta.
 - `professionalTitle`: até 120 caracteres, por exemplo `Engenheiro Civil`.
-- `phone`: opcional, até 30 caracteres, só dígitos, espaço, `+`, `(`, `)`, `-` e `.`, com 10 a 13 dígitos (DDD obrigatório, DDI opcional). Guardado como digitado, com espaços repetidos reduzidos a um.
-- `professionalEmail`: opcional, até 254 caracteres, gravado em minúsculas.
+- `phone`: opcional, até 30 caracteres, só dígitos, espaço, `(`, `)`, `-`, `.` e um `+` no início, com 10 a 13 dígitos (DDD obrigatório, DDI opcional). Guardado como digitado.
+- `professionalEmail`: opcional, até 254 caracteres, no formato `nome@domínio.ext`, gravado em minúsculas.
 
-Caracteres de controle são recusados em todos os campos.
+Em todos os campos, a API apara o texto e troca cada sequência de espaços, tabulações ou quebras de linha por um espaço. Os demais caracteres de controle são recusados.
 
 ### Na interface web
 
-O menu mostra **Perfil profissional** junto de Segurança da conta, só para quem tem ENGINEER. A página tem a seção Responsável técnico (nome completo, título profissional, número do CREA e UF do CREA) e a seção Contato (telefone e email, opcionais), que avisa que esses dois não saem no PDF. O selo indica perfil completo ou incompleto, e o perfil incompleto lista o que falta para aprovar. O formulário confere os mesmos formatos da API antes de enviar e mostra cada erro no próprio campo, inclusive o `field` devolvido pela API; o conflito de versão oferece recarregar o perfil. Enquanto há alteração não salva, o menu fica bloqueado como nas outras edições.
+O menu mostra **Perfil profissional** junto de Segurança da conta, só para quem tem ENGINEER. A página tem a seção Responsável técnico (nome completo, título profissional, número do CREA e UF do CREA) e a seção Contato (telefone e e-mail, opcionais), que avisa que esses dois não saem no PDF. O selo indica perfil completo ou incompleto, e o perfil incompleto lista o que falta para aprovar. O formulário confere os mesmos formatos da API antes de enviar e mostra cada erro no próprio campo, inclusive o `field` devolvido pela API; o conflito de versão oferece recarregar o perfil. Enquanto há alteração não salva, o menu fica bloqueado como nas outras edições.
 
 Na Revisão técnica de um furo em revisão, os campos de nome e registro deram lugar ao bloco Responsável técnico na aprovação, só leitura, com nome, título e `CREA-UF número` e o botão Editar perfil. Sem perfil completo, Aprovar tecnicamente fica desabilitado, a mensagem diz o que falta e Completar perfil profissional abre a página, que oferece voltar à revisão do mesmo furo. Se a API responder `PROFESSIONAL_PROFILE_INCOMPLETE` (perfil alterado em outra aba), o formulário de aprovação fecha e o bloco volta a mostrar o que falta. Depois de aprovado, o furo mostra a cópia gravada (`Responsável: nome · título · Registro: CREA-UF número`), e não o perfil atual. `tests/browser/professional-profile.spec.ts` cobre esse fluxo, os perfis sem acesso à página e o layout em 390 px.
 

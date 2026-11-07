@@ -201,7 +201,7 @@ A partir do 0.8.18, o título aparece na mesma linha do nome, separado por trave
 
 O título fica na linha do nome para o rodapé manter a altura. Um furo aprovado antes do perfil, sem título, mostra só o nome, sem texto no lugar do título. O título passa pelo mesmo escape de HTML do nome.
 
-No quadro, um nome longo com título quebra em mais linhas. Até o 0.8.17 cada folha do quadro tem 6 furos. No 0.8.18 continua assim, mas a folha aceita no máximo o texto de 6 nomes de 200 caracteres: cada linha conta pelo menos 200 caracteres, e nome com título conta o total. Com nomes e títulos comuns nada muda. Com o maior nome (200) e o maior título (120), cabem 3 furos por folha.
+No quadro, um nome longo com título quebra em mais linhas. Até o 0.8.17, cada folha do quadro tem 6 furos. No 0.8.18, a folha continua com até 6 furos e também com até 1200 caracteres, o texto de 6 nomes de 200 caracteres. Cada linha conta o nome, o separador " — " (3 caracteres) e o título, com mínimo de 200. Enquanto essa soma fica em até 200 caracteres por furo, a folha mantém os 6 furos. Com o maior nome (200) e o maior título (120), cada linha conta 323 e cabem 3 furos por folha.
 
 O modelo 0.8.17 e os anteriores não imprimem o título, mesmo quando o snapshot o tem. Validação:
 
