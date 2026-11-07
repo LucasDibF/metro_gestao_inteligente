@@ -37,6 +37,17 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
         },
       });
     }
+    // The approving engineer's own profile: approval copies it to the hole, never a typed value.
+    await db.professionalProfile.create({
+      data: {
+        tenantId,
+        userId: users[2].id,
+        fullName: 'Engenheira de teste',
+        creaNumber: '5060000001',
+        creaUf: 'SP',
+        professionalTitle: 'Engenheira civil',
+      },
+    });
     const work = await db.work.create({ data: { tenantId, name: 'Residencial das Palmeiras' } });
     workId = work.id;
     holeId = (await db.borehole.create({ data: { tenantId, workId, code: 'SP-01' } })).id;
@@ -347,17 +358,28 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
     await open(2);
     await page.getByRole('button', { name: 'Visão geral', exact: true }).click();
     await page.getByRole('button', { name: 'Revisão técnica', exact: true }).click();
+    const reviewer = page.getByRole('region', {
+      name: 'Responsável técnico na aprovação',
+      exact: true,
+    });
+    await expect(reviewer).toContainText('Engenheira de teste');
+    await expect(reviewer).toContainText('Engenheira civil');
+    await expect(reviewer).toContainText('CREA-SP 5060000001');
     await page.getByRole('button', { name: 'Aprovar tecnicamente', exact: true }).click();
-    await page
-      .getByLabel('Nome do responsável técnico', { exact: true })
-      .fill('Engenheira de teste');
-    await page.getByLabel('Registro profissional', { exact: true }).fill('TESTE-123');
+    await expect(page.getByLabel('Nome do responsável técnico', { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('Registro profissional', { exact: true })).toHaveCount(0);
     await page
       .getByLabel('Parecer ou observações da revisão', { exact: true })
       .fill('Caso sintético conferido para homologação.');
     await page.getByRole('button', { name: 'Confirmar aprovação', exact: true }).click();
     await expect(
       page.locator('strong').filter({ hasText: /^Aprovado tecnicamente$/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        'Responsável: Engenheira de teste · Engenheira civil · Registro: CREA-SP 5060000001',
+        { exact: true },
+      ),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Registro de campo', exact: true }).click();
     await page.getByRole('button', { name: 'Voltar aos furos', exact: true }).click();
@@ -544,6 +566,7 @@ test('SPT entry saves 4/6/8 as14, recalculates edits and keeps partial readings 
     if (workId) await db.work.delete({ where: { id: workId } });
     const ids = users.map((u) => u.id);
     await db.authSession.deleteMany({ where: { userId: { in: ids } } });
+    if (tenantId) await db.professionalProfile.deleteMany({ where: { tenantId } });
     await db.membership.deleteMany({ where: { userId: { in: ids } } });
     await db.user.deleteMany({ where: { id: { in: ids } } });
     if (tenantId) await db.tenant.delete({ where: { id: tenantId } });

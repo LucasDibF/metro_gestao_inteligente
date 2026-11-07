@@ -21,9 +21,10 @@ export const SUPPORTED_TEMPLATE_VERSIONS = [
   '0.8.15',
   '0.8.16',
   '0.8.17',
+  '0.8.18',
 ] as const;
 export type TemplateVersion = (typeof SUPPORTED_TEMPLATE_VERSIONS)[number];
-export const TEMPLATE_VERSION: TemplateVersion = '0.8.17';
+export const TEMPLATE_VERSION: TemplateVersion = '0.8.18';
 export function isSupportedTemplateVersion(version: string): version is TemplateVersion {
   return (SUPPORTED_TEMPLATE_VERSIONS as readonly string[]).includes(version);
 }

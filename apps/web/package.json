@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
+    "pretypecheck": "npm run build -w @spt/api-contracts",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 127.0.0.1"
   },
@@ -16,6 +17,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@spt/api-contracts": "0.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "vite": "^7.1.0"

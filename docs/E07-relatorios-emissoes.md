@@ -6,17 +6,17 @@ Implementação local observada em 31/10/2026. Já existe geração real de PDF 
 
 Prefixo autenticado `/api/v1/obras/:workId/relatorios`.
 
-| Método e rota                    | Perfil e resultado                                                        |
-| -------------------------------- | ------------------------------------------------------------------------- |
-| GET                              | perfis ativos; até 100 relatórios da obra                                 |
-| GET `/opcoes?page=1`             | furos da obra e suas fotos ativas; 20 furos por página                    |
-| POST                             | ADMIN/ENGINEER criam composição                                           |
-| PUT `/:id`                       | ADMIN/ENGINEER alteram com `version` esperada                             |
-| GET `/:id/croqui`                | perfis ativos; `version`, `map`, `svg`, `satelliteAvailable` e `mapError` quando aplicável |
-| PUT `/:id/croqui`                | ADMIN/ENGINEER; `version`, `view` ou null para automático, `baseMap` opcional (streets/satellite)                 |
-| GET `/:id/emissoes`              | composição, seleção atual e até 100 emissões recentes                     |
-| POST `/:id/emissoes`             | somente ENGINEER; `version`, `idempotencyKey` UUID                        |
-| GET `/:id/emissoes/:issueId/pdf` | perfis ativos autorizados; somente emissão READY, integridade verificada  |
+| Método e rota                    | Perfil e resultado                                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| GET                              | perfis ativos; até 100 relatórios da obra                                                         |
+| GET `/opcoes?page=1`             | furos da obra e suas fotos ativas; 20 furos por página                                            |
+| POST                             | ADMIN/ENGINEER criam composição                                                                   |
+| PUT `/:id`                       | ADMIN/ENGINEER alteram com `version` esperada                                                     |
+| GET `/:id/croqui`                | perfis ativos; `version`, `map`, `svg`, `satelliteAvailable` e `mapError` quando aplicável        |
+| PUT `/:id/croqui`                | ADMIN/ENGINEER; `version`, `view` ou null para automático, `baseMap` opcional (streets/satellite) |
+| GET `/:id/emissoes`              | composição, seleção atual e até 100 emissões recentes                                             |
+| POST `/:id/emissoes`             | somente ENGINEER; `version`, `idempotencyKey` UUID                                                |
+| GET `/:id/emissoes/:issueId/pdf` | perfis ativos autorizados; somente emissão READY, integridade verificada                          |
 
 Composição: `title` até 200 caracteres, `notes` até 4000 (string vazia permitida), `holeIds` ordenados com 1–20 UUIDs distintos, `photoIds` ordenados com até 40 UUIDs distintos e `showOtherBoreholes` booleano. Fotos devem pertencer a furos selecionados e à mesma obra/empresa. Há limite de 100 relatórios por obra, 50 jobs PENDING/PROCESSING por empresa e 1000 registros somados de ensaios/camadas no relatório.
 
@@ -88,7 +88,6 @@ O perfil mantém 20 m por folha, com NA marcado por profundidade e quadro de lei
 
 Correções de origem/fronteiras, textos longos e camadas finas no perfil; paginação explícita de fotos, coordenadas e complementos; validação de área útil e assets no worker. Ver report-reference.md para testes e limites. Nova emissão DEMO foi conferida nas quatro páginas; históricas preservadas. A densidade extrema de rótulos no croqui continua pendente, sem afetar as tabelas completas.
 
-
 ## Refinamento técnico e editorial — 0.6.1 — 01/11/2026
 
 Reutilizado o agente impeccable_finish_reviewer com o kit pdf-engineering. Preservados A4,20 m por perfil, limites das colunas, identidade laranja e conteúdo técnico. Ampliada a tipografia dos valores e descrições; quebra de linhas baseada em largura de glifos, cotas ajustadas à coluna, profundidades com duas casas. A grade não atravessa as descrições; títulos, contraste das curvas e notas foram refinados. Folio global separado da indicação de trecho. Data de campo e emissão identificadas explicitamente.
@@ -101,7 +100,6 @@ Validação:40 testes unitários,13 de integração,6 de navegador, tipos e form
 
 Permanecem fora desta rodada: prova física de impressão, pinagem completa de fontes/Chromium, política para fila de templates antigos e regressão visual de pixels em CI. A verificação local não equivale a certificação normativa. Campos técnicos ainda não capturados continuam NI.
 
-
 ## Regras de alinhamento e classificação — 0.6.2 — 01/11/2026
 
 Correção dos cinco pontos indicados pelo usuário. Zero deslocado para posição livre da borda do cabeçalho. Rótulos de profundidade e cota usam a mesma referência vertical dos valores SPT ordinários, com espaçamento uniforme de25,5 unidades SVG por metro. Cotas conhecidas passam a constar metro a metro, calculadas como cota da boca menos profundidade; desconhecidas continuam NI. Penetrações especiais mantêm duas linhas legíveis dentro da célula. A posição física das curvas e do NA não foi modificada.
@@ -110,16 +108,13 @@ Regra persistente: perfil geológico e classificação só aparecem nos interval
 
 Validação final:43 unitários e13 integrações aprovados; tipos e formatação aprovados. Quatorze cenários renderizados em40 páginas físicas, incluindo cotas263,35m, metro ausente, classificações iguais/diferentes, origem, limites20/40, camadas finas e penetrações parciais. Todas as páginas passaram conferência de cabeçalho/rodapé/folio; inspeção visual das páginas e revisão independente dos quatro cenários críticos pelo agente existente, sem bloqueios. Emissão real DEMO12, template0.6.2, quatro páginas renderizadas e inspecionadas individualmente. Histórico anterior mantido; sem alteração de dados de obra real. Mantida a grade0–20m e as larguras aprovadas.
 
-
 ### Acabamento solicitado — 0.6.3 — 01/11/2026
 
 Removida a linha horizontal adicional na profundidade executada, mantendo o quadro textual Limite. Texto das classificações centralizado horizontalmente na coluna90–330 (âncora210), com a mesma quebra de linhas, intervalos e conteúdo. Mantidas todas as outras proporções.44 testes unitários e13 de integração passaram. Nova emissão real DEMO13, quatro páginas renderizadas e inspecionadas individualmente, sem cortes ou sobreposições. Arquivos anteriores preservados.
 
-
 ### Pendências de emissão específicas — 01/11/2026
 
 A validação agora distingue REPORT_NOT_APPROVED (aprovação ausente/desatualizada), REPORT_COORDINATES_REQUIRED (referência oficial ausente) e REPORT_HOLE_UNAVAILABLE (seleção indisponível). A interface mostra códigos dos furos afetados. Mantidas as condições técnicas de emissão e as regras que invalidam aprovação ao mudar coordenada; nenhum valor, referência oficial ou aprovação é criado automaticamente. Testes unitários cobrem os três casos; integração de relatório confirma a emissão/imutabilidade.
-
 
 ### Correção de geração com endereço em duas linhas — 0.6.5 — 01/11/2026
 
@@ -127,13 +122,11 @@ Reprodução de emissão FAILED mostrou excesso de altura nas duas folhas de per
 
 Testes unitários e integrações de layout/emissão passaram. Nova emissão2 do relatório afetado gerada pelo fluxo API/worker e baixada:4páginas A4 renderizadas e inspecionadas individualmente, com fotos reais, texto selecionável e nenhum corte. Falhas anteriores permanecem no histórico; medições e aprovações não foram alteradas.
 
-
 ### Encerramento parcial — 0.6.6 — 01/11/2026
 
 Atendido o pedido de ocultar0,00, iniciar os rótulos em1m e não desenhar marcações/grade de metros abaixo do encerramento. No último registro com avanços parciais, o término mostrado é o início do respectivo metro mais a soma das penetrações em metros:registro4 com30/6 após3m resulta3,06m;registro7 com30/14 resulta6,14m. O rótulo final ocupa a célula terminal já existente para preservar a legibilidade e o alinhamento com os golpes; a estrutura de20m por folha continua como capacidade máxima. Limite e observações usam a mesma profundidade final. Dados brutos e aprovações não são modificados.
 
 Avanços especiais apresentados numa linha como30/6,sem sufixocm; unidades continuam na legenda. Tipos e descrições de solo preservados, conforme instrução expressa para ignorar a parte de classificações.49 unitários,tipos e2 integrações de layout/emissão passaram. Nova emissão4 real do relatório afetado com4 páginas A4 rasterizadas e inspecionadas individualmente; extração confirma3,06/30/6 e6,14/30/14 sem0,00 ou metros posteriores. Histórico anterior mantido.
-
 
 ## Fundo de ruas — 0.7.0 — 01/11/2026
 
@@ -142,7 +135,6 @@ Adicionado OpenFreeMap/MapLibre, estilo Positron, à prévia autenticada e ao PD
 STREET_MAP_ENABLED=true no ambiente local e exemplo; testes usamfalse para independência da rede. Requer Chromium/Chrome e acessoHTTPS a tiles.openfreemap.org no processo da API e worker. Renderizador não recebe identidade, nomes ou credenciais do usuário; requisições do navegador são restritas ao host do provedor. Timeout8s de carga, cache local em memória de até16 vistas por15min. Falha do serviço preserva croqui e mostra aviso explícito. Nenhuma imagem externa arbitrária é aceita no SVG. Preparação para implantação deve instalar o navegador também na API, que atualmente não o instala no estágioAPI do Docker; publicação segue fora do escopo local.
 
 Verificação: build/tipos e formatação passaram;52unitários,14integrações e6testes de navegador passaram. Teste real de rede gerou fundo em6,66s; prévia autenticada retornou200 com imagem incorporada e extensão390m em1,645s. Nova emissão6 do relatório atual,4páginas A4 rasterizadas e inspecionadas individualmente. Imagem de fundo presente na página do croqui e créditos selecionáveis confirmados por extração. Demais folhas preservadas. Coordenadas fictícias continuam apontando à localização de teste, sem substituição automática por endereço. Ajustes finais de escala/créditos passaram nos testes direcionados de coordenadas/mapa e formatação.
-
 
 ## 0.7.1 — opção de satélite Esri (local)
 
@@ -154,7 +146,6 @@ World Imagery usa tiles autenticados, reprojetados ao mesmo referencial UTM da s
 
 Verificação: 55 testes unitários, 16 integrações e seis testes de navegador. Incluem chave ausente, papel sem permissão, persistência após edição da composição, fonte congelada na emissão, credencial redigida em falha do provedor, autenticação dos tiles sintéticos, reprojeção compartilhada e caso de rótulo próximo à escala. Prévia em desktop/celular conferida visualmente. PDF de validação de quatro páginas foi rasterizado e inspecionado, com texto selecionável e créditos completos; fundo explicitamente sintético, sem afirmar cobertura real da Esri. Ativação e homologação com imagens reais dependem de conta/licença/chave Esri. Nenhuma medição, aprovação ou coordenada existente foi alterada.
 
-
 ## 0.7.2 — Google como única integração de mapas
 
 Por solicitação do usuário, as integrações Esri e OpenFreeMap foram removidas. As seções anteriores que descrevem esses provedores são histórico de implementação e não representam a configuração atual. `ARCGIS_API_KEY` e `STREET_MAP_ENABLED` não são mais lidos nem constam dos ambientes. O módulo antigo de rasterização e suas dependências exclusivas foram retirados.
@@ -162,7 +153,6 @@ Por solicitação do usuário, as integrações Esri e OpenFreeMap foram removid
 `GOOGLE_MAPS_API_KEY` configura uma chave de navegador restrita à Maps Embed API e aos sites autorizados. GET croqui retorna `google: {embedUrl, externalUrl}` quando há coordenadas; `embedUrl` é null sem chave. A referência usa o centro oficial convertido de UTM para WGS84, sem enviar nomes de empresas ou códigos dos furos. O iframe é servido diretamente pelo Google. Não há fundo raster na prévia técnica ou no PDF. PUT croqui volta a aceitar somente versão e enquadramento, sem escolha de provedor. Registros históricos não são apagados; escolhas antigas de provedor são ignoradas, e removidas da composição apenas quando há novo salvamento do enquadramento.
 
 O snapshot e o PDF não incluem chave, URL ou imagem Google. Norte, escala, pontos e coordenadas permanecem vetoriais e selecionáveis. A geração não depende da chave. O worker aceita snapshots pendentes 0.7.0/0.7.1 compatíveis e gera novos PDFs técnicos sem consultar provedores; PDFs já emitidos permanecem imutáveis. Configure a chave real e confira o mapa na interface antes de considerar homologado o serviço externo. Testes de navegador usam quadro simulado, sem consumir Google. Ativação local descrita no README.
-
 
 ## 0.8.0 — fundo gratuito INPE na prévia e no PDF
 
@@ -189,3 +179,24 @@ O modelo 0.8.15 e os anteriores conservam o desenho histórico. Validação: tes
 Até o 0.8.16, o perfil individual imprimia "NI" (não informado) em cada campo sem dado: peso e queda, revestimento, amostrador, início e término, tipologia, km, lote, posição, deslocamento, fiscal, as leituras de nível d’água, trado, lavagem, profundidade do revestimento, lavagem por tempo, a cota sem altitude e as colunas de revestimento e método. A partir do 0.8.17, esses campos ficam em branco: o rótulo continua ("Fiscal:", "Início: · Término:") e a célula fica vazia. Na legenda sai a definição "NI = não informado;". No cabeçalho das folhas e na capa, "Não informado" e "Não informada" também saem: Cliente, Local, Cota (m) e Data de campo (na conferência interativa) mantêm o rótulo com o valor vazio, e o cliente da capa fica vazio. A linha de local da capa, que não tem rótulo, deixa de ser impressa quando não há cidade nem estado (antes: "Local não informado"). Continuam como estavam "NE = não encontrado", "Coordenadas UTM: Não informadas", "Não informado (não equivale a NE)" no nível d’água, "não registrado" no motivo da paralisação, "não confirmados" sobre o equipamento, o "—" de avanço inexistente e o separador "·".
 
 O modelo 0.8.16 e os anteriores conservam o "NI" e o "Não informado". Validação: a saída HTML das 20 versões anteriores (perfis, conferência interativa e relatório completo com capa, com e sem dados de campo e da obra) foi comparada byte a byte antes e depois da mudança, sem diferença; testes novos cobrem o 0.8.17 sem "NI" nem "não informado" no cabeçalho e na capa, com os rótulos, e o 0.8.16 com o texto histórico; testes unitários, tipos e formatação aprovados. Um PDF de exemplo foi renderizado pelo worker no 0.8.17 e inspecionado.
+
+## Título profissional do responsável — modelo 0.8.18
+
+A aprovação passou a copiar nome, registro e título do perfil profissional do engenheiro ([E05](E05-revisao.md)). O snapshot de cada furo leva `reviewerTitle` junto de `reviewerName` e `reviewerRegistration`. Telefone e e-mail do perfil não entram no snapshot.
+
+A partir do 0.8.18, o título aparece na mesma linha do nome, separado por travessão ("Ana Souza — Engenheira Civil"):
+
+- no rodapé "Responsável técnico pelos dados" de cada folha do furo (perfis e fotografias);
+- na coluna "Responsável técnico" do quadro de responsabilidade técnica, impresso quando o relatório tem mais de 3 furos.
+
+O título fica na linha do nome para o rodapé manter a altura. Um furo aprovado antes do perfil, sem título, mostra só o nome, sem texto no lugar do título. O título passa pelo mesmo escape de HTML do nome.
+
+No quadro, um nome longo com título quebra em mais linhas. Até o 0.8.17, cada folha do quadro tem 6 furos. No 0.8.18, a folha continua com até 6 furos e também com até 1200 caracteres, o texto de 6 nomes de 200 caracteres. Cada linha conta o nome, o separador " — " (3 caracteres) e o título, com mínimo de 200. Enquanto essa soma fica em até 200 caracteres por furo, a folha mantém os 6 furos. Com o maior nome (200) e o maior título (120), cada linha conta 323 e cabem 3 furos por folha.
+
+O modelo 0.8.17 e os anteriores não imprimem o título, mesmo quando o snapshot o tem. Validação:
+
+- A saída HTML das 21 versões anteriores (relatório completo com 1, 4, 7 e 13 furos, nome de 200 e título de 120 caracteres) foi comparada byte a byte com o código anterior, sem diferença.
+- `tests/report-reviewer-title.test.ts` cobre o título no rodapé e no quadro, o furo sem título, o escape de HTML, a paginação do quadro e as versões anteriores iguais com e sem título.
+- `tests/integration/report-layout.test.ts` passa pela verificação de geometria do worker com 7 furos de nome e título máximos.
+- `tests/integration/reports.test.ts` confere o título no snapshot emitido.
+- Um PDF de exemplo no 0.8.18 foi renderizado localmente e inspecionado.

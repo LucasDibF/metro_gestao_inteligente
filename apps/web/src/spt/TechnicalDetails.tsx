@@ -28,6 +28,7 @@ export function TechnicalDetails({
   onEditingChange,
   onEditIdentification,
   onIdentificationSaved,
+  onOpenProfessionalProfile,
 }: {
   workId: string;
   workName: string;
@@ -42,6 +43,7 @@ export function TechnicalDetails({
   onEditingChange?: (editing: boolean) => void;
   onEditIdentification?: () => void;
   onIdentificationSaved?: (hole: Identification) => void;
+  onOpenProfessionalProfile?: () => void;
 }) {
   const [filesEditing, setFilesEditing] = useState(false);
   const technical = useTechnicalData({ workId, holeId: hole.id, onError }),
@@ -180,6 +182,9 @@ export function TechnicalDetails({
               onAction={technical.setReviewAction}
               onToggleHistory={technical.toggleHistory}
               onSubmit={(e) => technical.save(e, 'review')}
+              profileRejected={technical.errorCode === 'PROFESSIONAL_PROFILE_INCOMPLETE'}
+              onOpenProfile={onOpenProfessionalProfile}
+              onError={onError}
             />
           ) : null}
         </>

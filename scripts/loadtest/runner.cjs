@@ -42,6 +42,10 @@ function normalRoute(url) {
   return url.replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/g, ':id').replace(/\?.*$/, '');
 }
 const { summary } = require('./metrics.cjs');
+const {
+  needsDemoReviewerProfile,
+  demoReviewerProfileBody,
+} = require('../demo-reviewer-profile.cjs');
 function checkpoint() {
   fs.writeFileSync(privateFile, JSON.stringify(manifest, null, 2), { mode: 0o600 });
   save(path.join(config.dir, 'progress.json'), {
@@ -480,6 +484,19 @@ async function stage(vus, seconds, warmup = 30, label = `${vus}-VU`) {
   );
   return result;
 }
+/**
+ * The approval copies the reviewer from the engineer's own profile. An incomplete profile, or the
+ * old unmarked demo one, gets the fictitious demo values; any other complete profile is kept.
+ */
+async function ensureReviewerProfile(actor) {
+  const profile = await required(actor, '/perfil-profissional', undefined, 'GET', {
+    safeRetry: true,
+  });
+  if (!needsDemoReviewerProfile(profile)) return;
+  await required(actor, '/perfil-profissional', demoReviewerProfileBody(profile), 'PUT', {
+    safeRetry: true,
+  });
+}
 async function mediaAndPdf() {
   phase = 'bounded-files-and-pdf';
   measuring = false;
@@ -497,6 +514,7 @@ async function mediaAndPdf() {
   photoIds.push(
     ...currentFiles.photos.filter((p) => p.processingState === 'READY').map((p) => p.id),
   );
+  await ensureReviewerProfile(actor);
   for (let index = 0; index < manifest.reportHoles.length; index++) {
     const p = root + '/furos/' + manifest.reportHoles[index];
     const files = await required(actor, p + '/arquivos', undefined, 'GET', { safeRetry: true });
@@ -542,8 +560,6 @@ async function mediaAndPdf() {
       p + '/tecnico/aprovar',
       {
         technicalVersion: technical.hole.technicalVersion,
-        reviewerName: 'Responsável fictício',
-        reviewerRegistration: 'SEM VALIDADE',
         note: 'Aprovação somente de teste',
       },
       'POST',

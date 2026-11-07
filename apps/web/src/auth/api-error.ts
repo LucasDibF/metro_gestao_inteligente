@@ -1,8 +1,14 @@
+/** Extra data some failures carry: the rejected field, or the fields still missing. */
+export interface ApiErrorDetails {
+  field?: string;
+  missingFields?: string[];
+}
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
     readonly code?: string,
+    readonly details: ApiErrorDetails = {},
   ) {
     super(message);
   }
@@ -61,6 +67,9 @@ const domainMessages: Record<string, string> = {
     'Há furo sem aprovação técnica atual. Confira a revisão dos furos indicados.',
   IDEMPOTENCY_CONFLICT:
     'Esta solicitação já foi utilizada com outros dados. Recarregue as emissões.',
+  PROFESSIONAL_PROFILE_INVALID: 'Confira o campo indicado no perfil profissional.',
+  PROFESSIONAL_PROFILE_INCOMPLETE:
+    'Complete seu perfil profissional para aprovar: nome completo, CREA com UF e título profissional.',
   QUEUE_LIMIT:
     'A empresa já tem muitas gerações pendentes. Aguarde a conclusão antes de solicitar outra.',
 };
@@ -79,6 +88,8 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiError
     code?: string;
     depths?: string[];
     holeCodes?: string[];
+    field?: unknown;
+    missingFields?: unknown;
   };
   const message =
     body.code === 'SPT_DEPTH_EXISTS'
@@ -110,9 +121,16 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiError
         .map((c) => c.slice(0, 120))
     : [];
   const holeDetail = holes.length ? ' Furos: ' + holes.join(', ') + '.' : '';
+  const missingFields = Array.isArray(body.missingFields)
+    ? body.missingFields.filter((f): f is string => typeof f === 'string').slice(0, 10)
+    : undefined;
   return new ApiError(
     response.status,
     (domainMessages[body.code ?? ''] ?? message) + detail + holeDetail,
     body.code,
+    {
+      ...(typeof body.field === 'string' ? { field: body.field.slice(0, 64) } : {}),
+      ...(missingFields ? { missingFields } : {}),
+    },
   );
 }

@@ -9,6 +9,7 @@ import { Reports } from '../reports/Reports';
 import { SptTests } from '../spt/SptTests';
 import { useEffect, useState } from 'react';
 import type { Profile } from '../auth/client';
+import type { ProfileReturnTarget } from '../workspace/WorkDestination';
 import { BoreholeForm } from './HierarchyForms';
 import { HoleList } from './HoleList';
 import type { Borehole } from './hierarchy-types';
@@ -19,12 +20,14 @@ export function WorkHierarchy({
   onBack,
   onError,
   onEditingChange,
+  onOpenProfessionalProfile,
 }: {
   work: { id: string; name: string };
   profile: Profile;
   onBack: () => void;
   onError: (error: unknown) => void;
   onEditingChange?: (editing: boolean) => void;
+  onOpenProfessionalProfile?: (back: ProfileReturnTarget) => void;
 }) {
   const [editingSpt, setEditingSpt] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
@@ -116,6 +119,7 @@ export function WorkHierarchy({
           hole={sptHole}
           profile={profile}
           onError={onError}
+          onOpenProfessionalProfile={onOpenProfessionalProfile}
           onBack={() => {
             setSptHole(null);
             hierarchy.refresh();

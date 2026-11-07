@@ -5,6 +5,7 @@ import { Plus, RefreshCw, Search } from 'lucide-react';
 import { WorkHierarchy } from './WorkHierarchy';
 import { useEffect, useState } from 'react';
 import type { Profile } from '../auth/client';
+import type { ProfileReturnTarget } from '../workspace/WorkDestination';
 import { WorkEditor } from './WorkEditor';
 import { WorkListView } from './WorkListView';
 import { useWorks } from './use-works';
@@ -14,10 +15,12 @@ export function Works({
   profile,
   onError,
   onEditingChange,
+  onOpenProfessionalProfile,
 }: {
   profile: Profile;
   onError: (error: unknown) => void;
   onEditingChange?: (editing: boolean) => void;
+  onOpenProfessionalProfile?: (back: ProfileReturnTarget) => void;
 }) {
   const [opened, setOpened] = useState<Work | null>(null);
   const works = useWorks(onError),
@@ -39,6 +42,7 @@ export function Works({
         }}
         onError={onError}
         onEditingChange={onEditingChange}
+        onOpenProfessionalProfile={onOpenProfessionalProfile}
       />
     );
   return (

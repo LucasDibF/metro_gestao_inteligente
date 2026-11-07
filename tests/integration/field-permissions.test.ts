@@ -96,7 +96,7 @@ test('only an engineer can make the planned coordinate official', async () => {
   }
 });
 
-test('the reviewer name and registration reach engineers only', async () => {
+test('the reviewer name, registration and title reach engineers only', async () => {
   const fx = await apiFixture([
     { role: 'ENGINEER' },
     { role: 'OPERATOR' },
@@ -108,7 +108,11 @@ test('the reviewer name and registration reach engineers only', async () => {
     await assign(fx, operator.id);
     await fx.db.borehole.update({
       where: { id: fx.hole.id },
-      data: { reviewerName: 'Revisora Fixture', reviewerRegistration: 'CREA-0000' },
+      data: {
+        reviewerName: 'Revisora Fixture',
+        reviewerRegistration: 'CREA-0000',
+        reviewerTitle: 'Engenheira civil',
+      },
     });
     const list = async (user: typeof engineer, route: string) => {
       const response = await fx.call(user, route);
@@ -127,15 +131,18 @@ test('the reviewer name and registration reach engineers only', async () => {
     ]) {
       assert.ok(!('reviewerName' in hole));
       assert.ok(!('reviewerRegistration' in hole));
+      assert.ok(!('reviewerTitle' in hole));
       assert.equal(hole.reviewState, 'DRAFT');
     }
     assert.equal((await list(engineer, hierarchy)).reviewerName, 'Revisora Fixture');
     assert.equal((await list(engineer, hierarchy)).reviewerRegistration, 'CREA-0000');
+    assert.equal((await list(engineer, hierarchy)).reviewerTitle, 'Engenheira civil');
     await fx.db.workAssignment.update({
       where: { workId: fx.work.id },
       data: { operatorId: combined.id },
     });
     assert.equal((await list(combined, mobile)).reviewerName, 'Revisora Fixture');
+    assert.equal((await list(combined, mobile)).reviewerTitle, 'Engenheira civil');
   } finally {
     await fx.close();
   }

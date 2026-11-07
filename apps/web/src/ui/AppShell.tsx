@@ -17,17 +17,20 @@ import {
   LogOut,
   UserRound,
   FileText,
+  IdCard,
 } from 'lucide-react';
 import type { Profile } from '../auth/client';
 import { Button } from './Button';
 import { Brand } from './Brand';
 
-export type WorkspaceTab = 'works' | 'security' | 'trash' | 'reports' | 'clients' | 'access';
+export type WorkspaceTab =
+  'works' | 'professional-profile' | 'security' | 'trash' | 'reports' | 'clients' | 'access';
 const items = [
   { id: 'works', label: 'Obras', icon: FolderOpen },
   { id: 'clients', label: 'Clientes', icon: Users },
   { id: 'access', label: 'Acessos', icon: UserCog },
   { id: 'reports', label: 'Relatórios', icon: FileText },
+  { id: 'professional-profile', label: 'Perfil profissional', icon: IdCard },
   { id: 'security', label: 'Segurança da conta', icon: ShieldCheck },
   { id: 'trash', label: 'Lixeira', icon: Trash2 },
 ] as const;
@@ -137,7 +140,9 @@ export function AppShell({
                 ? hasRole(profile, 'ADMIN', 'COMMERCIAL', 'ENGINEER', 'VIEWER')
                 : item.id === 'reports'
                   ? hasRole(profile, 'ADMIN', 'COMMERCIAL', 'ENGINEER', 'VIEWER')
-                  : true,
+                  : item.id === 'professional-profile'
+                    ? hasRole(profile, 'ENGINEER')
+                    : true,
           )
           .map((item) => (
             <Button

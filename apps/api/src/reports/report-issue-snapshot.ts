@@ -80,6 +80,7 @@ export async function issueSnapshot(
       fieldDate: h.fieldDate!.toISOString(),
       reviewerName: h.reviewerName!,
       reviewerRegistration: h.reviewerRegistration!,
+      reviewerTitle: h.reviewerTitle,
       reviewedAt: h.reviewedAt!.toISOString(),
       reviewNote: h.reviewNote,
       officialCoordinate: JSON.parse(

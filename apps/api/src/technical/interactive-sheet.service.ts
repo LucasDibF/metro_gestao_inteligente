@@ -87,6 +87,7 @@ export class InteractiveSheetService {
             fieldDate: hole.fieldDate?.toISOString() ?? '',
             reviewerName: hole.reviewerName ?? 'Não aprovado',
             reviewerRegistration: hole.reviewerRegistration ?? '',
+            reviewerTitle: hole.reviewerTitle,
             reviewedAt: hole.reviewedAt?.toISOString() ?? '',
             reviewNote: hole.reviewNote,
             officialCoordinate: coordinate

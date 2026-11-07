@@ -6,9 +6,10 @@ import type { SptMetreRows, TechnicalDetailRows } from '../technical/technical-r
 export interface MobileSnapshotRows {
   technical: Omit<TechnicalDetailRows, 'events' | 'hole'> & {
     events: never[];
-    hole: Omit<Borehole, 'reviewerName' | 'reviewerRegistration'> & {
+    hole: Omit<Borehole, 'reviewerName' | 'reviewerRegistration' | 'reviewerTitle'> & {
       reviewerName: null;
       reviewerRegistration: null;
+      reviewerTitle: null;
     };
   };
   files: BoreholeFilesRows;

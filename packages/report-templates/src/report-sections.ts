@@ -3,6 +3,7 @@ import type { ReportSnapshot, MapBackground } from './types';
 import { renderTechnicalMap } from './technical-map';
 import { escapeHtml as e } from './html';
 import { numeric, sheetHeader, sheetFooter } from './sheet-layout';
+import { responsibilityPages, reviewerIdentity } from './reviewer-identity';
 
 /** Content chunks are explicit pages; they are never clipped to manufacture a fit. */
 function chunks<T>(values: T[], count: number): T[][] {
@@ -72,10 +73,10 @@ export function locationSheets(s: ReportSnapshot, imagery?: MapBackground) {
           .join('')
       : '';
   const responsible = summary
-    ? chunks(s.holes, 6)
+    ? responsibilityPages(s.templateVersion, s.holes)
         .map(
           (group, i) =>
-            `<section class="page responsible-continuation">${sheetHeader(s, `Responsabilidade técnica · Continuação ${i + 1}`)}<table><thead><tr><th>Furo</th><th>Responsável técnico</th><th>Registro profissional</th></tr></thead><tbody>${group.map((h) => `<tr><td>${e(h.code)}</td><td>${e(h.reviewerName)}</td><td>${e(h.reviewerRegistration)}</td></tr>`).join('')}</tbody></table>${sheetFooter(s, undefined, true)}</section>`,
+            `<section class="page responsible-continuation">${sheetHeader(s, `Responsabilidade técnica · Continuação ${i + 1}`)}<table><thead><tr><th>Furo</th><th>Responsável técnico</th><th>Registro profissional</th></tr></thead><tbody>${group.map((h) => `<tr><td>${e(h.code)}</td><td>${reviewerIdentity(s.templateVersion, h)}</td><td>${e(h.reviewerRegistration)}</td></tr>`).join('')}</tbody></table>${sheetFooter(s, undefined, true)}</section>`,
         )
         .join('')
     : '';

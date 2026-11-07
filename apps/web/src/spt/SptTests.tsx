@@ -1,5 +1,5 @@
 import { FuroNavigation, type FuroSection } from './FuroNavigation';
-import { canRecordField } from '../auth/permissions';
+import { canOpenFuroSection, canRecordField } from '../auth/permissions';
 import { hasRole } from '../auth/permissions';
 import { Button } from '../ui/Button';
 import { ArrowLeft, Plus, X } from 'lucide-react';
@@ -8,6 +8,7 @@ import { FieldSubmission } from './FieldSubmission';
 import { TechnicalDetails } from './TechnicalDetails';
 import { useEffect, useRef, useState } from 'react';
 import type { Profile } from '../auth/client';
+import type { ProfileReturnTarget } from '../workspace/WorkDestination';
 import { MetreEditor } from './MetreEditor';
 import { MetreJump } from './MetreJump';
 import { SptRecordList } from './SptRecordList';
@@ -22,6 +23,8 @@ export function SptTests({
   onError,
   onEditingChange,
   onIdentificationChanged,
+  initialSection,
+  onOpenProfessionalProfile,
 }: {
   workId: string;
   workName: string;
@@ -31,10 +34,18 @@ export function SptTests({
   onError: (error: unknown) => void;
   onEditingChange?: (editing: boolean) => void;
   onIdentificationChanged?: (saved: Identification) => void;
+  /** Section to open first, such as the review when returning from the professional profile. */
+  initialSection?: FuroSection;
+  /** Leaves for the professional profile; its page offers the way back to this review. */
+  onOpenProfessionalProfile?: (back: ProfileReturnTarget) => void;
 }) {
   const [hole, setHole] = useState(initialHole);
-  const [section, setSection] = useState<FuroSection>(
-    hasRole(profile, 'OPERATOR') ? 'field' : 'overview',
+  const [section, setSection] = useState<FuroSection>(() =>
+    initialSection && canOpenFuroSection(profile, initialSection)
+      ? initialSection
+      : hasRole(profile, 'OPERATOR')
+        ? 'field'
+        : 'overview',
   );
   const details = section !== 'field';
   const setDetails = (value: boolean) => setSection(value ? 'overview' : 'field');
@@ -80,6 +91,15 @@ export function SptTests({
         onBack={onBack}
         onEditingChange={onEditingChange}
         onEditIdentification={() => setSection('identification')}
+        onOpenProfessionalProfile={
+          onOpenProfessionalProfile
+            ? () =>
+                onOpenProfessionalProfile({
+                  target: { workId, boreholeId: hole.id, section: 'review' },
+                  label: `Voltar à revisão do furo ${hole.code}`,
+                })
+            : undefined
+        }
         onIdentificationSaved={(saved) => {
           setHole(saved);
           onIdentificationChanged?.(saved);

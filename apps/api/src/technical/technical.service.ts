@@ -1,5 +1,4 @@
 import { testEndDepth } from '@spt/geotechnical-engine';
-import { optionalText } from './technical-input';
 import { requireFieldAssignment, requireFieldWrite } from '../auth/field-access';
 import {
   BadRequestException,
@@ -13,8 +12,16 @@ import { TenantContext, TenantDatabaseService } from '../database/tenant-databas
 import { lockWork, readWork } from '../works/work-lock';
 import { fieldChecklist } from './field-checklist';
 import { TechnicalDetailRows } from './technical-rows';
-import { validateReviewData } from './review-validation';
-import { depth, expectedVersion, technicalInput, text } from './technical-input';
+import { validateReviewData, validateSoilCoverage } from './review-validation';
+import { reviewerFromProfile } from '../professional-profile/professional-profile';
+import {
+  depth,
+  expectedVersion,
+  fieldDataInput,
+  optionalText,
+  technicalInput,
+  text,
+} from './technical-input';
 @Injectable()
 export class TechnicalService {
   constructor(@Inject(TenantDatabaseService) private readonly db: TenantDatabaseService) {}
@@ -111,46 +118,7 @@ export class TechnicalService {
     body: unknown,
     transaction?: Prisma.TransactionClient,
   ): Promise<Borehole> {
-    const value = technicalInput(body, [
-      'technicalVersion',
-      'executedDepthM',
-      'waterLevelM',
-      'fieldDate',
-    ]);
-    const version = expectedVersion(value.technicalVersion),
-      executedDepthM = depth(value.executedDepthM, true),
-      waterLevelM = depth(value.waterLevelM, true);
-    if (executedDepthM !== null && Number(executedDepthM) <= 0)
-      throw new BadRequestException({
-        code: 'EXECUTED_DEPTH_INVALID',
-        message: 'Executed depth must be positive',
-      });
-    if (
-      waterLevelM !== null &&
-      executedDepthM !== null &&
-      Number(waterLevelM) > Number(executedDepthM)
-    )
-      throw new BadRequestException({
-        code: 'WATER_LEVEL_BELOW_DEPTH',
-        message: 'Water level cannot exceed executed depth',
-      });
-    let fieldDate: Date | null = null;
-    if (value.fieldDate !== null && value.fieldDate !== undefined && value.fieldDate !== '') {
-      if (typeof value.fieldDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.fieldDate))
-        throw new BadRequestException({
-          code: 'FIELD_DATE_INVALID',
-          message: 'Invalid field date',
-        });
-      fieldDate = new Date(value.fieldDate + 'T00:00:00Z');
-      if (
-        !Number.isFinite(fieldDate.getTime()) ||
-        fieldDate.toISOString().slice(0, 10) !== value.fieldDate
-      )
-        throw new BadRequestException({
-          code: 'FIELD_DATE_INVALID',
-          message: 'Invalid field date',
-        });
-    }
+    const { version, executedDepthM, waterLevelM, fieldDate } = fieldDataInput(body);
     return this.db.run(
       c,
       async (tx) => {
@@ -271,15 +239,10 @@ export class TechnicalService {
     action: 'submit' | 'approve' | 'reject',
     transaction?: Prisma.TransactionClient,
   ): Promise<Borehole> {
-    const v = technicalInput(body, [
-      'technicalVersion',
-      'note',
-      ...(action === 'approve' ? ['reviewerName', 'reviewerRegistration'] : []),
-    ]);
+    // The reviewer identity comes only from the approver's professional profile, never the body.
+    const v = technicalInput(body, ['technicalVersion', 'note']);
     const version = expectedVersion(v.technicalVersion),
       note = text(v.note, 2000);
-    const reviewerName = action === 'approve' ? text(v.reviewerName, 200) : null,
-      reviewerRegistration = action === 'approve' ? text(v.reviewerRegistration, 100) : null;
     return this.db.run(
       c,
       async (tx) => {
@@ -304,21 +267,12 @@ export class TechnicalService {
             orderBy: { fromM: 'asc' },
           });
           validateReviewData(hole, tests, layers.length);
-          let end = 0;
-          for (const layer of layers) {
-            if (Number(layer.fromM) !== end)
-              throw new BadRequestException({
-                code: 'SOIL_PROFILE_GAP',
-                message: 'Soil profile must cover the full executed depth',
-              });
-            end = Number(layer.toM);
-          }
-          if (end !== Number(hole.executedDepthM))
-            throw new BadRequestException({
-              code: 'SOIL_PROFILE_GAP',
-              message: 'Soil profile must cover executed depth',
-            });
+          validateSoilCoverage(hole.executedDepthM, layers);
         }
+        const reviewer =
+          action === 'approve'
+            ? await reviewerFromProfile(tx, c)
+            : { reviewerName: null, reviewerRegistration: null, reviewerTitle: null };
         const updated = await tx.borehole.update({
           where: { id: boreholeId },
           data: {
@@ -327,15 +281,14 @@ export class TechnicalService {
             approvedVersion: action === 'approve' ? version : null,
             reviewedBy: action === 'approve' ? c.userId : null,
             reviewedAt: action === 'approve' ? new Date() : null,
-            reviewerName,
-            reviewerRegistration,
+            ...reviewer,
             reviewNote: note,
             version: { increment: 1 },
           },
         });
         await this.event(tx, c, workId, boreholeId, version, `REVIEW_${action.toUpperCase()}`, {
           note,
-          ...(reviewerName ? { reviewerName, reviewerRegistration } : {}),
+          ...(action === 'approve' ? reviewer : {}),
         });
         return updated;
       },

@@ -5,10 +5,18 @@ import { Reports } from '../reports/Reports';
 import { LoadingState } from '../ui/LoadingState';
 import { Button } from '../ui/Button';
 import { ArrowLeft } from 'lucide-react';
+import type { FuroSection } from '../spt/FuroNavigation';
 export interface WorkTarget {
   workId: string;
   boreholeId?: string | null;
   reportId?: string | null;
+  /** Borehole section to open first; the profile's default otherwise. */
+  section?: FuroSection;
+}
+/** A borehole to come back to after the professional profile, with the button's label. */
+export interface ProfileReturnTarget {
+  target: WorkTarget;
+  label: string;
 }
 export function WorkDestination({
   target,
@@ -16,12 +24,15 @@ export function WorkDestination({
   onBack,
   onError,
   onEditingChange,
+  onOpenProfessionalProfile,
 }: {
   target: WorkTarget;
   profile: Profile;
   onBack: () => void;
   onError: (e: unknown) => void;
   onEditingChange?: (editing: boolean) => void;
+  /** Leaves the borehole for the professional profile, remembering where to come back. */
+  onOpenProfessionalProfile?: (back: ProfileReturnTarget) => void;
 }) {
   const [work, setWork] = useState<{ id: string; name: string } | null>(null),
     [hole, setHole] = useState<{ id: string; code: string } | null>(null),
@@ -72,6 +83,8 @@ export function WorkDestination({
       onError={onError}
       onBack={onBack}
       onEditingChange={onEditingChange}
+      initialSection={target.section}
+      onOpenProfessionalProfile={onOpenProfessionalProfile}
     />
   ) : (
     <Reports

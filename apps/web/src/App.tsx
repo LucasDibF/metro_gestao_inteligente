@@ -1,35 +1,30 @@
 import { Button } from './ui/Button';
-import { hasRole, roleNames } from './auth/permissions';
-import type { WorkTarget } from './workspace/WorkDestination';
+import { hasRole } from './auth/permissions';
+import { AccountTitle } from './ui/AccountTitle';
+import type { ProfileReturnTarget, WorkTarget } from './workspace/WorkDestination';
 import type { WorkspaceTab } from './ui/AppShell';
 import { AppShell } from './ui/AppShell';
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { LoadingState } from './ui/LoadingState';
 import { auth, ApiError, isCredentialFailure, type Profile } from './auth/client';
 import { Login } from './auth/Login';
-
-const Access = lazy(() =>
-  import('./management/Access').then((module) => ({ default: module.Access })),
-);
-const Clients = lazy(() =>
-  import('./management/Clients').then((module) => ({ default: module.Clients })),
-);
-const ReportCenter = lazy(() =>
-  import('./workspace/ReportCenter').then((module) => ({ default: module.ReportCenter })),
-);
-const WorkDestination = lazy(() =>
-  import('./workspace/WorkDestination').then((module) => ({ default: module.WorkDestination })),
-);
-const Trash = lazy(() => import('./works/Trash').then((module) => ({ default: module.Trash })));
-const Works = lazy(() => import('./works/Works').then((module) => ({ default: module.Works })));
-const Security = lazy(() =>
-  import('./auth/Security').then((module) => ({ default: module.Security })),
-);
+import { DevelopmentToolbar } from './ui/DevelopmentToolbar';
+import {
+  Access,
+  Clients,
+  ProfessionalProfile,
+  ReportCenter,
+  Security,
+  Trash,
+  WorkDestination,
+  Works,
+} from './workspace-screens';
 
 export function App() {
   const [tab, setTab] = useState<WorkspaceTab>('works');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [target, setTarget] = useState<WorkTarget | null>(null);
+  const [profileReturn, setProfileReturn] = useState<ProfileReturnTarget | null>(null);
   const [message, setMessage] = useState('');
   const [recovery, setRecovery] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -92,6 +87,7 @@ export function App() {
     setRecovery(false);
     setTab('works');
     setTarget(null);
+    setProfileReturn(null);
     setMessage(message);
   }, []);
   const error = useCallback(
@@ -105,6 +101,11 @@ export function App() {
     },
     [signedOut],
   );
+  function openProfessionalProfile(back: ProfileReturnTarget) {
+    setProfileReturn(back);
+    setTarget(null);
+    setTab('professional-profile');
+  }
   async function switchTestRole(role: Profile['role']) {
     setBusy(true);
     setMessage('');
@@ -113,6 +114,7 @@ export function App() {
       setProfile({ ...updated, localTesting: true });
       setTab('works');
       setTarget(null);
+      setProfileReturn(null);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Não foi possível trocar o perfil de teste.');
       error(e);
@@ -181,10 +183,12 @@ export function App() {
       onTab={(next) => {
         setTab(next);
         setTarget(null);
+        setProfileReturn(null);
       }}
       onTarget={(next) => {
         setTarget(next);
         setTab('works');
+        setProfileReturn(null);
       }}
       onError={error}
       busy={busy}
@@ -193,46 +197,22 @@ export function App() {
       onHome={() => {
         setTab('works');
         setTarget(null);
+        setProfileReturn(null);
         setHomeVisit((value) => value + 1);
       }}
       onLogout={() => void logout()}
       toolbar={
         development ? (
-          <section className="development-toolbar" aria-label="Teste local">
-            <p>Acesso de teste local</p>
-            <label htmlFor="test-role">Perfil de teste</label>
-            <select
-              id="test-role"
-              value={profile.role}
-              disabled={busy || recovery || editing}
-              onChange={(e) => void switchTestRole(e.target.value as Profile['role'])}
-            >
-              <option value="ADMIN">Administrador</option>
-              <option value="ENGINEER">Engenheiro</option>
-              <option value="OPERATOR">Sondador</option>
-              <option value="COMMERCIAL">Comercial</option>
-              <option value="VIEWER">Consulta</option>
-            </select>
-            {message ? <p role="alert">{message}</p> : null}
-          </section>
+          <DevelopmentToolbar
+            role={profile.role}
+            disabled={busy || recovery || editing}
+            message={message}
+            onSwitch={(role) => void switchTestRole(role)}
+          />
         ) : null
       }
     >
-      <div className="account-title">
-        <div>
-          {profile.tenant.profile?.logoDataUrl?.startsWith('data:image/png;base64,') ? (
-            <img className="company-logo" src={profile.tenant.profile.logoDataUrl} alt="" />
-          ) : null}
-          <h1>{profile.tenant.name}</h1>
-          <p>
-            {[profile.role, ...(profile.additionalRoles ?? [])]
-              .map((role) => roleNames[role])
-              .join(' · ')}{' '}
-            · Ambiente de trabalho
-          </p>
-        </div>
-        <span className="status">{recovery ? 'Guarde os códigos' : 'Sessão ativa'}</span>
-      </div>
+      <AccountTitle profile={profile} recovery={recovery} />
       <Suspense fallback={<LoadingState>Carregando tela…</LoadingState>}>
         {tab === 'works' ? (
           target ? (
@@ -243,9 +223,16 @@ export function App() {
               onError={error}
               onBack={() => setTarget(null)}
               onEditingChange={setEditing}
+              onOpenProfessionalProfile={openProfessionalProfile}
             />
           ) : (
-            <Works key={homeVisit} profile={profile} onError={error} onEditingChange={setEditing} />
+            <Works
+              key={homeVisit}
+              profile={profile}
+              onError={error}
+              onEditingChange={setEditing}
+              onOpenProfessionalProfile={openProfessionalProfile}
+            />
           )
         ) : tab === 'access' && hasRole(profile, 'ADMIN') ? (
           <Access
@@ -269,6 +256,23 @@ export function App() {
           />
         ) : tab === 'trash' && hasRole(profile, 'ADMIN') ? (
           <Trash onError={error} />
+        ) : tab === 'professional-profile' && hasRole(profile, 'ENGINEER') ? (
+          <ProfessionalProfile
+            onError={error}
+            onEditingChange={setEditing}
+            back={
+              profileReturn
+                ? {
+                    label: profileReturn.label,
+                    onReturn: () => {
+                      setTarget(profileReturn.target);
+                      setProfileReturn(null);
+                      setTab('works');
+                    },
+                  }
+                : undefined
+            }
+          />
         ) : (
           <Security
             key={profile.userId}

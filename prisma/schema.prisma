@@ -44,6 +44,7 @@ model User {
 
 model Membership {
   fieldAssignments WorkAssignment[]
+  professionalProfile ProfessionalProfile?
   tenantId String @map("tenant_id") @db.Uuid
   userId String @map("user_id") @db.Uuid
   role MembershipRole
@@ -155,6 +156,7 @@ model Borehole {
  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(3)
  reviewerName String? @map("reviewer_name") @db.VarChar(200)
  reviewerRegistration String? @map("reviewer_registration") @db.VarChar(100)
+ reviewerTitle String? @map("reviewer_title") @db.VarChar(120)
  reviewNote String? @map("review_note") @db.VarChar(2000)
  soilLayers SoilLayer[]
  technicalEvents TechnicalEvent[]
@@ -369,6 +371,24 @@ model WorkAssignment {
  @@unique([workId,tenantId])
  @@index([tenantId,operatorId,active],map:"work_assignments_operator_idx")
  @@map("work_assignments")
+}
+
+// Perfil profissional por vínculo (202611060001). RLS, CHECKs e a regra de leitura e escrita pelo próprio usuário ficam na migração.
+model ProfessionalProfile {
+  tenantId String @map("tenant_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  fullName String? @map("full_name") @db.VarChar(200)
+  creaNumber String? @map("crea_number") @db.VarChar(20)
+  creaUf String? @map("crea_uf") @db.Char(2)
+  professionalTitle String? @map("professional_title") @db.VarChar(120)
+  phone String? @db.VarChar(30)
+  professionalEmail String? @map("professional_email") @db.VarChar(254)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  membership Membership @relation(fields: [tenantId, userId], references: [tenantId, userId], onDelete: Restrict, onUpdate: NoAction)
+  @@id([tenantId, userId])
+  @@map("professional_profiles")
 }
 
 // Criada em 202611020002_management e escrita só por funções SECURITY DEFINER (admin_member_*). RLS e políticas ficam na migração.

@@ -29,8 +29,9 @@ const engineeringBoreholeSelect = {
   ...fieldBoreholeSelect,
   reviewerName: true,
   reviewerRegistration: true,
+  reviewerTitle: true,
 } as const;
-/** The reviewer's name and registration are shown to engineers only. */
+/** The reviewer's name, registration and title are shown to engineers only. */
 export function boreholeSelectFor(
   reader: BoreholeReader,
 ): typeof fieldBoreholeSelect | typeof engineeringBoreholeSelect {

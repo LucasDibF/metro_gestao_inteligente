@@ -50,3 +50,28 @@ test('a superseded session is a 401 with its own code, distinct from a credentia
   assert.equal(isCredentialFailure(error.code), false);
   assert.equal(isCredentialFailure('PASSWORD_INVALID'), true);
 });
+
+test('professional profile failures keep the rejected field and the missing fields', async () => {
+  const invalid = await apiErrorFromResponse(
+    failure(400, {
+      code: 'PROFESSIONAL_PROFILE_INVALID',
+      field: 'creaNumber',
+      message: 'Registration number',
+    }),
+  );
+  assert.equal(invalid.message, 'Confira o campo indicado no perfil profissional.');
+  assert.deepEqual(invalid.details, { field: 'creaNumber' });
+  const incomplete = await apiErrorFromResponse(
+    failure(409, {
+      code: 'PROFESSIONAL_PROFILE_INCOMPLETE',
+      missingFields: ['professionalTitle', 7],
+    }),
+  );
+  assert.equal(incomplete.code, 'PROFESSIONAL_PROFILE_INCOMPLETE');
+  assert.equal(
+    incomplete.message,
+    'Complete seu perfil profissional para aprovar: nome completo, CREA com UF e título profissional.',
+  );
+  assert.deepEqual(incomplete.details, { missingFields: ['professionalTitle'] });
+  assert.deepEqual((await apiErrorFromResponse(failure(409, {}))).details, {});
+});

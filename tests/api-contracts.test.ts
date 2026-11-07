@@ -11,6 +11,7 @@ import type {
   MobileOperationReceipt,
   MobilePhotoReceipt,
   MobileSnapshot,
+  ProfessionalProfile,
   ReportHistory,
   ReportIssueSummary,
   ReportMapPreview,
@@ -21,6 +22,7 @@ import type {
   TechnicalDetail,
 } from '@spt/api-contracts';
 import type { BoreholeFilesRows } from '../apps/api/src/files/files-rows';
+import type { ProfessionalProfileRows } from '../apps/api/src/professional-profile/professional-profile';
 import type { PhotoStagingService } from '../apps/api/src/files/photo-staging.service';
 import type {
   MobileOperationResultRows,
@@ -59,6 +61,7 @@ contractMatches<Same<Jsonified<TechnicalDetailRows>, TechnicalDetail>>();
 contractMatches<Same<Jsonified<SptMetreRows>, SptMetreRecord>>();
 contractMatches<Same<Jsonified<BoreholeFilesRows>, BoreholeFiles>>();
 contractMatches<Same<Jsonified<MobileSnapshotRows>, MobileSnapshot>>();
+contractMatches<Same<Jsonified<ProfessionalProfileRows>, ProfessionalProfile>>();
 contractMatches<
   Same<Jsonified<MobileReceiptRows<MobileOperationResultRows>>, MobileOperationReceipt>
 >();

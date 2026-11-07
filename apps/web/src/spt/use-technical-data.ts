@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { auth } from '../auth/client';
+import { ApiError, auth } from '../auth/client';
 import type { SheetLayer } from './sheet/types';
 import type { Layer, ReviewAction, TechnicalData, TechnicalForm } from './technical-types';
 
@@ -8,6 +8,8 @@ export interface TechnicalDataState {
   revision: number;
   busy: boolean;
   error: string;
+  /** Code of the last failed save, when the API sent one. */
+  errorCode: string | undefined;
   message: string;
   fieldEditor: boolean;
   layerEditor: Layer | 'new' | null;
@@ -38,6 +40,7 @@ export function useTechnicalData({
     [revision, setRevision] = useState(0),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
+    [errorCode, setErrorCode] = useState<string | undefined>(),
     [message, setMessage] = useState('');
   const [fieldEditor, setFieldEditor] = useState(false),
     [layerEditor, setLayerEditor] = useState<Layer | 'new' | null>(null),
@@ -85,6 +88,7 @@ export function useTechnicalData({
     if (!data) return;
     const values = new FormData(event.currentTarget);
     setError('');
+    setErrorCode(undefined);
     setMessage('');
     if (kind === 'layer' && Number(values.get('from')) >= Number(values.get('to'))) {
       setError('A profundidade em “Até” precisa ser maior que em “De”.');
@@ -119,12 +123,6 @@ export function useTechnicalData({
       body = {
         technicalVersion: data.hole.technicalVersion,
         note: String(values.get('note')).trim(),
-        ...(reviewAction === 'aprovar'
-          ? {
-              reviewerName: String(values.get('name')),
-              reviewerRegistration: String(values.get('registration')),
-            }
-          : {}),
       };
     }
     try {
@@ -136,6 +134,10 @@ export function useTechnicalData({
       setMessage('Dados salvos.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível salvar.');
+      const code = e instanceof ApiError ? e.code : undefined;
+      setErrorCode(code);
+      // The profile changed elsewhere: close the approval so the page can be opened to fix it.
+      if (code === 'PROFESSIONAL_PROFILE_INCOMPLETE') setReviewAction(null);
       onError(e);
     } finally {
       setBusy(false);
@@ -146,6 +148,7 @@ export function useTechnicalData({
   }
   function reload() {
     setError('');
+    setErrorCode(undefined);
     setFieldEditor(false);
     setLayerEditor(null);
     setReviewAction(null);
@@ -156,6 +159,7 @@ export function useTechnicalData({
     revision,
     busy,
     error,
+    errorCode,
     message,
     fieldEditor,
     layerEditor,

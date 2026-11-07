@@ -31,3 +31,8 @@ export type {
   ReportOptionsPage,
   ReportRecord,
 } from './reports';
+export type {
+  ProfessionalProfile,
+  ProfessionalProfileInput,
+  ProfessionalProfileRequiredField,
+} from './professional-profile';

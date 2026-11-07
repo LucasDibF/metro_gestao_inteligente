@@ -63,8 +63,8 @@ function renderProfile(templateVersion: string, hole: Hole = holeWithoutFieldDat
 
 const isolatedNi = /\bNI\b/g;
 
-test('0.8.17 is the current template and leaves missing values blank', () => {
-  assert.equal(TEMPLATE_VERSION, '0.8.17');
+test('0.8.17 and later templates leave missing values blank', () => {
+  assert.equal(missingFieldValue(TEMPLATE_VERSION), '');
   assert.equal(missingFieldValue('0.8.17'), '');
   assert.equal(missingFieldValue('0.8.16'), 'NI');
   assert.equal(missingFieldLabels('0.8.17', ['Peso', 'Queda']), 'Peso: · Queda:');
